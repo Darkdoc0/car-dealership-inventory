@@ -1,20 +1,29 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApi } from '../api/ApiContext';
+import { ApiError } from '../api/errors';
 import type { Car } from '../api/types';
 import CarFiltersForm from '../cars/CarFiltersForm';
 import CarResults from '../cars/CarResults';
+import CarRowActions from '../cars/CarRowActions';
 import { CATEGORY_LABELS, STATUS_LABELS } from '../cars/labels';
 import { useCarBrowser } from '../cars/useCarBrowser';
 import { formatPrice } from '../lib/format';
 
-const cell = 'px-4 py-3';
+const cell = 'px-4 py-3 align-top';
+const carName = (car: Car) => `${car.year} ${car.make} ${car.model}`;
 
-function CarRow({ car }: { car: Car }) {
-  const name = `${car.year} ${car.make} ${car.model}`;
+interface CarRowProps {
+  car: Car;
+  onRestock: (car: Car, quantity: number) => Promise<void>;
+  onDelete: (car: Car) => Promise<void>;
+}
+
+function CarRow({ car, onRestock, onDelete }: CarRowProps) {
   return (
     <tr className="border-t border-slate-200">
       <th scope="row" className={`${cell} text-left font-medium text-slate-900`}>
-        {name}
+        {carName(car)}
       </th>
       <td className={`${cell} font-mono text-xs text-slate-600`}>{car.vin}</td>
       <td className={cell}>{CATEGORY_LABELS[car.category]}</td>
@@ -22,13 +31,7 @@ function CarRow({ car }: { car: Car }) {
       <td className={cell}>{car.quantity}</td>
       <td className={cell}>{STATUS_LABELS[car.status]}</td>
       <td className={cell}>
-        <Link
-          to={`/admin/cars/${car.id}/edit`}
-          aria-label={`Edit ${name}`}
-          className="font-medium text-indigo-600 hover:underline"
-        >
-          Edit
-        </Link>
+        <CarRowActions car={car} onRestock={onRestock} onDelete={onDelete} />
       </td>
     </tr>
   );
@@ -42,8 +45,30 @@ function noticeFromLocation(state: unknown): string | null {
 
 export default function AdminCarsPage() {
   const api = useApi();
-  const { state, reload, applyFilters, previousPage, nextPage } = useCarBrowser(api);
-  const notice = noticeFromLocation(useLocation().state);
+  const { state, pageNumber, reload, replaceCar, applyFilters, previousPage, nextPage } = useCarBrowser(api);
+  const location = useLocation();
+  const [notice, setNotice] = useState<string | null>(() => noticeFromLocation(location.state));
+
+  async function handleRestock(car: Car, quantity: number) {
+    const updated = await api.restockCar(car.id, quantity);
+    replaceCar(updated);
+    setNotice(`Restocked ${carName(updated)}: added ${quantity}`);
+  }
+
+  async function handleDelete(car: Car) {
+    let alreadyGone = false;
+    try {
+      await api.deleteCar(car.id);
+    } catch (error) {
+      // Someone else deleted it first: the vehicle is gone either way, so just refresh the list.
+      if (!(error instanceof ApiError && error.status === 404)) throw error;
+      alreadyGone = true;
+    }
+    setNotice(alreadyGone ? `Already deleted: ${carName(car)}` : `Deleted ${carName(car)}`);
+    // Deleting the only vehicle on a later page would leave that page empty, so step back instead of reloading it.
+    if (state.status === 'ready' && state.page.items.length === 1 && pageNumber > 0) previousPage();
+    else reload();
+  }
 
   return (
     <section className="space-y-6">
@@ -79,7 +104,7 @@ export default function AdminCarsPage() {
               </thead>
               <tbody>
                 {cars.map((car) => (
-                  <CarRow key={car.id} car={car} />
+                  <CarRow key={car.id} car={car} onRestock={handleRestock} onDelete={handleDelete} />
                 ))}
               </tbody>
             </table>
