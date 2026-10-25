@@ -204,6 +204,29 @@ describe('DashboardPage pagination', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
+  it('keeps the current results and the paging buttons in place while the next page loads', async () => {
+    const session = createFakeSession({ token: 't', user: member });
+    const firstPage = Array.from({ length: 12 }, (_, i) => makeCar({ id: i + 1, model: `Model ${i + 1}` }));
+    const secondPage = Array.from({ length: 12 }, (_, i) => makeCar({ id: i + 13, model: `Model ${i + 13}` }));
+    let resolveSecond: (page: CarListResult) => void = () => undefined;
+    session.api.listCars.mockImplementation(async (params = {}) =>
+      params.offset === 12 ? new Promise<CarListResult>((r) => (resolveSecond = r)) : makePage(firstPage, 30, 12, 0),
+    );
+    renderDashboard(session);
+    await screen.findByText('Showing 1–12 of 30 vehicles');
+    const next = screen.getByRole('button', { name: 'Next' });
+
+    await userEvent.click(next);
+
+    expect(screen.getAllByRole('article')).toHaveLength(12);
+    expect(screen.queryByText('Loading vehicles…')).not.toBeInTheDocument();
+    expect(next).toBeInTheDocument();
+    expect(next).toBeDisabled();
+    resolveSecond(makePage(secondPage, 30, 12, 12));
+    expect(await screen.findByText('Showing 13–24 of 30 vehicles')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
   it('goes back to the first page when a new search is run', async () => {
     const session = createFakeSession({ token: 't', user: member });
     serveThirtyCars(session);
