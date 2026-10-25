@@ -39,3 +39,17 @@ Please execute this project step-by-step, strict adherence to the following guid
 3. Verify that `PROMPTS.md` is populated, the test report is generated, and use the `github` plugin to push all final commits to the main branch.
 
 Let's begin with Phase 1. Acknowledge these instructions and execute the repository and logging setup.
+
+---
+
+### 🧑 User — 2026-10-25T09:40:42.064Z
+
+.claude/settings.json
+
+---
+
+### 🧑 User — 2026-10-25T09:43:24.300Z
+
+Paste this as your first message in Claude Code:
+
+> Phase 1 is done (repo, co-author git hook, PROMPTS.md logging hook, Playwright and GitHub plugins at project scope). Start Phase 2: backend in `backend/` with Express + TypeScript + PostgreSQL. Postgres 16 runs locally on Windows at localhost:5432, user `postgres`, password in `.env` (`NewPass123`), databases `car_dealership` and `car_dealership_test`. Use strict Red-Green-Refactor with a separate failing-test commit before each implementation commit, starting with `POST /api/auth/register`. Run a code review before each implementation commit.
