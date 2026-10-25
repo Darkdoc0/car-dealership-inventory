@@ -73,8 +73,11 @@ describe('AdminCarsPage', () => {
 
     renderAt('/admin', session);
 
-    expect(await screen.findByRole('link', { name: 'Add vehicle' })).toHaveAttribute('href', '/admin/cars/new');
-    expect(screen.getByRole('link', { name: 'Edit 2021 Toyota Corolla' })).toHaveAttribute('href', '/admin/cars/7/edit');
+    expect(await screen.findByRole('link', { name: 'Edit 2021 Toyota Corolla' })).toHaveAttribute(
+      'href',
+      '/admin/cars/7/edit',
+    );
+    expect(screen.getByRole('link', { name: 'Add vehicle' })).toHaveAttribute('href', '/admin/cars/new');
   });
 
   it('searches with the same filters as the shop', async () => {
