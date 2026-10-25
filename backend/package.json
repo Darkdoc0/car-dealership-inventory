@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "seed:admin": "tsx src/seed.ts",
-    "test": "cross-env NODE_ENV=test jest --runInBand"
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "test:coverage": "npm test -- --coverage"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
