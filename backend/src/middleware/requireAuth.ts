@@ -2,9 +2,12 @@ import type { RequestHandler } from 'express';
 import { pool } from '../db';
 import { verifyToken } from '../jwt';
 
+export type Role = 'user' | 'admin';
+
 export interface AuthUser {
   id: number;
   email: string;
+  role: Role;
 }
 
 declare global {
@@ -32,7 +35,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
   }
 
   try {
-    const { rows } = await pool.query('SELECT id, email FROM users WHERE id = $1', [userId]);
+    const { rows } = await pool.query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
     if (!rows[0]) return unauthorized();
     req.user = rows[0];
     return next();

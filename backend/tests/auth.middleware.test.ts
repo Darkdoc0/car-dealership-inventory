@@ -29,7 +29,7 @@ describe('requireAuth middleware (via GET /api/auth/me)', () => {
     const res = await me(`Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ id, email });
+    expect(res.body).toEqual({ id, email, role: 'user' });
   });
 
   it('rejects a request without an Authorization header with 401', async () => {
