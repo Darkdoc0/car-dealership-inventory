@@ -2,6 +2,8 @@
 
 Raw, unedited AI chat log for this project.
 
+> **Backfilled:** the logging hook skipped some turns of the later session. Entries marked _(backfilled from the session transcript)_ were added afterwards from the Claude Code session transcript (prompts exactly as typed; for each turn, Claude's final reply, as the hook records it). They are placed in time order. All other entries were written live by the hook.
+
 > **Redaction:** the author's local PostgreSQL password appeared in this log (in a prompt and in one reply) and was replaced with `[REDACTED-DB-PASSWORD]` in both places. Nothing else was changed by that edit.
 
 > Session 1 (claude.ai, Claude Opus 5.5) began before the logging hook existed, so its opening prompt is pasted here verbatim. Public chat link: _TODO — add the share link for this conversation_.
@@ -56,11 +58,448 @@ Paste this as your first message in Claude Code:
 
 > Phase 1 is done (repo, co-author git hook, PROMPTS.md logging hook, Playwright and GitHub plugins at project scope). Start Phase 2: backend in `backend/` with Express + TypeScript + PostgreSQL. Postgres 16 runs locally on Windows at localhost:5432, user `postgres`, password in `.env` (`[REDACTED-DB-PASSWORD]`), databases `car_dealership` and `car_dealership_test`. Use strict Red-Green-Refactor with a separate failing-test commit before each implementation commit, starting with `POST /api/auth/register`. Run a code review before each implementation commit.
 
+### 🤖 Claude — 2026-10-25T09:47:59.517Z _(backfilled from the session transcript)_
+
+`POST /api/auth/register` works, with 7 tests passing and the typecheck clean. It's on branch `feat/backend-auth-register`, and nothing is pushed. I also ran the registration tests against `car_dealership_test` and confirmed the setup refuses to run without a valid test database URL.
+
+**Setup and location**
+- Your session started in an empty scratch folder, so I moved it to `C:\Users\feate\Downloads\car-dealership-inventory`, where I found the Phase 1 repo.
+- Postgres connects with the credentials you gave, and both databases exist.
+- `backend/.env` holds the password. It's gitignored, and a `.env.example` is committed.
+- TypeScript 7 doesn't work with ts-jest, so I pinned TypeScript 5.9.
+
+**Commits, oldest first**
+1. `chore: enable playwright and github plugins at project scope`: your uncommitted Phase 1 leftovers (`.claude/settings.json` and `PROMPTS.md`).
+2. `chore(backend): scaffold Express + TypeScript + Jest + pg skeleton`: an empty app, a migration runner, and test setup that resets the test database.
+3. `test(auth): add failing tests for POST /api/auth/register` (RED): six tests, failing with 404 and a missing `users` table.
+4. `feat(auth): implement POST /api/auth/register` (GREEN).
+
+The co-author hook added its trailer to each commit.
+
+**Behavior**
+- A valid request returns 201 with the new user's `id` and `email`.
+- The password is stored as a bcrypt hash.
+- A malformed email or a password under 8 characters returns 400.
+- A duplicate email returns 409, ignoring case.
+
+**Code review**
+I ran the code review before the implementation commit and it returned 9 findings. I fixed three in that commit:
+- The test setup drops the whole `public` schema, so it now refuses to run unless `TEST_DATABASE_URL` points at `car_dealership_test`.
+- The server now applies migrations when it starts. Before this, the dev database would never have had a `users` table.
+- The database pool now handles errors on idle connections instead of crashing the process.
+
+The other six are deferred, because behavior changes need their own failing-test commit first:
+- **Password length:** there is no maximum, and bcrypt only uses the first 72 bytes.
+- **Email casing:** emails aren't lowercased on write.
+- **JSON errors:** malformed JSON and server errors return HTML instead of JSON.
+- **Migrations:** there is no tracking, so every migration re-runs on each start.
+- **Test hygiene:** tests don't clean up the users they create.
+- **Test coverage:** there are no tests for non-string inputs.
+
+The "Run RED→GREEN cycles" button in the box above does the first four. The other two aren't in that list yet.
+
+---
+
+### 🧑 User — 2026-10-25T09:48:15.119Z _(backfilled from the session transcript)_
+
+Yes, run separate RED then GREEN cycles for: password max 72 bytes, lowercase email normalization, JSON error handler, then migration tracking.
+
+### 🤖 Claude — 2026-10-25T09:51:00.285Z _(backfilled from the session transcript)_
+
+All four review follow-ups are done, each as a failing-test commit followed by an implementation commit. The full suite passes (15 tests) and the typecheck is clean. Nothing is pushed.
+
+| Cycle | Test commit | Implementation commit |
+|---|---|---|
+| Password max 72 bytes | `038067e` | `f9d4dc2` |
+| Lowercase emails | `e515c49` | `b4a2040` |
+| JSON error handler | `01e994b` | `ab6df67` |
+| Migration tracking | `076a916` | `81b3080` |
+
+- **Password limit:** passwords over 72 bytes now get a 400. The limit counts bytes, not characters, so 37 "é" characters (74 bytes) are rejected.
+- **Emails:** registration now stores and returns the lowercase email. I left the case-insensitive unique index as it was.
+- **Error handler:** malformed JSON now returns a JSON 400. Unexpected errors return `{error: "Internal server error"}`, with the details logged only on the server.
+- **Migration tracking:** `migrate` now records applied files in a `schema_migrations` table. It runs each new file in a transaction and takes a lock so two servers starting together don't collide. Because migrations are now tracked, a non-idempotent migration is safe to add.
+- **Refactor commit:** one extra commit, `9b5f117`, lets `migrate` take an optional migrations directory. It changes no behavior and exists only so the tests can use a temporary folder.
+
+I ran a low-effort code review before each implementation commit. Two had findings, and I fixed both before committing:
+- The error handler now passes the error on when the response has already started streaming.
+- A failed `ROLLBACK` no longer hides the original migration error.
+
+The JSON-500 test mocks `pool.query` to simulate a database failure. That's the only mock in the suite.
+
+The earlier test-hygiene findings (no row cleanup, untested non-string inputs) are still open. I can fold them into the login work if you want.
+
+---
+
+### 🧑 User — 2026-10-25T09:51:07.277Z _(backfilled from the session transcript)_
+
+Yes, start POST /api/auth/login with the same RED-GREEN flow and review before each implementation commit.
+
+### 🤖 Claude — 2026-10-25T09:53:12.868Z _(backfilled from the session transcript)_
+
+`POST /api/auth/login` is done and passing: 22 tests, clean typecheck, nothing pushed.
+
+**Behavior**
+- A valid login returns 200 with `{token, user: {id, email}}`. The token is an HS256 JWT that expires in 1 hour, with the user id as its subject.
+- Emails match case-insensitively.
+- A wrong password and an unknown email return the same 401, `Invalid email or password`. The unknown-email path runs a dummy bcrypt compare, so response time doesn't reveal which emails exist.
+- A missing or non-string password returns 400.
+- The server now refuses to start if `JWT_SECRET` isn't set. I added a dev value to your local `.env` and a placeholder to `.env.example`.
+
+**Commits**
+1. `53c5cb0` is a chore commit adding `jsonwebtoken` and the `JWT_SECRET` config.
+2. `89cbe44` adds the six failing login tests (RED).
+3. `6c9cf6f` adds one more failing test, from the review (RED).
+4. `6a96348` is the implementation (GREEN).
+
+**Code review**
+The review found a real hole in my first version. bcrypt only uses the first 72 bytes of a password. So someone who knew a 72-byte password could log in with anything appended to it. I wrote a failing test that proved it (it got 200 instead of 401), committed that test on its own, and then fixed it. Login now rejects passwords over 72 bytes with the same 401. I also pulled the bcrypt cost into one shared constant, so the dummy hash can't drift from the real one.
+
+I deferred three review findings:
+- **Login rate limiting:** this is the one that matters. There is no brute-force protection yet, and the box above offers to add it.
+- **JWT secret strength:** `JWT_SECRET` isn't checked for a minimum length.
+- **Startup blocking:** the dummy bcrypt hash blocks the process for roughly 50–100 ms at startup.
+
+---
+
+### 🧑 User — 2026-10-25T09:55:12.397Z _(backfilled from the session transcript)_
+
+Yes, add rate limiting to login with the same RED-GREEN flow and review before the implementation commit.
+
+### 🤖 Claude — 2026-10-25T09:56:30.671Z _(backfilled from the session transcript)_
+
+Login rate limiting is done and committed. The suite passes (26 tests), the typecheck is clean, and nothing is pushed.
+
+**Behavior**
+- Each IP gets 10 failed login attempts per 15 minutes. After that, `/api/auth/login` returns 429 with `{error: "Too many login attempts, try again later"}` and a `Retry-After` header.
+- Successful logins don't count against the limit, and registration isn't limited.
+- Once an IP hits the limit, even the correct password is refused until the window passes.
+- `createApp({ loginMaxAttempts })` overrides the limit, which is how the tests use a small number.
+
+**Commits**
+1. `4a2fe3c` is a chore commit: it adds the dependency and lets `createApp` take options, with no behavior change.
+2. `8ff3225` adds the failing tests (RED). Two failed on behavior (401 instead of 429, and 200 instead of 429). The other two, "successful logins aren't counted" and "registration isn't limited", already passed and guard against over-limiting.
+3. `e626311` is the implementation (GREEN).
+
+**Code review**
+The review found no bugs in the code itself, only limits of this design. I left all four unfixed, and none of them is covered by a test:
+- **Reverse proxy:** `trust proxy` isn't configured. Behind a reverse proxy, everyone shares the proxy's IP, so 10 failures from anyone would lock out all users. This needs setting before deploying behind a proxy.
+- **IP-only key:** an attacker spreading guesses across many IPs isn't throttled for one account, and users behind the same network can lock each other out.
+- **In-memory counters:** they reset on restart and aren't shared between server instances, so they would need a shared store like Redis if you run more than one.
+- **Counting rule:** any non-2xx response counts as a failure, including 400s and database 500s, not just wrong passwords.
+
+---
+
+### 🧑 User — 2026-10-25T10:00:50.339Z _(backfilled from the session transcript)_
+
+Yes, build the JWT auth middleware for protected routes with the same RED-GREEN flow and review before the implementation commit.
+
+### 🤖 Claude — 2026-10-25T10:02:09.940Z _(backfilled from the session transcript)_
+
+The JWT auth middleware is built and committed, with a protected `GET /api/auth/me` route that exercises it. The suite passes (34 tests), the typecheck is clean, and nothing is pushed.
+
+**What `requireAuth` does**
+- It requires an `Authorization: Bearer <token>` header and verifies the token. It pins HS256 and enforces expiry.
+- It then looks the user up in the database, so a valid token for a deleted user is refused.
+- On success it sets `req.user` to `{id, email}` for the route handlers.
+- Everything else gets `401 {error: "Authentication required"}`. That covers a missing header, the wrong scheme, a garbage token, a token signed with another secret, an expired token, an unsigned `alg: none` token, and a deleted user.
+- `GET /api/auth/me` returns `{id, email}` for a valid token.
+
+**Commits**
+1. `dd0a0fb` adds eight failing tests (RED). All eight returned 404 because `/me` didn't exist yet.
+2. `69fb367` is the implementation (GREEN).
+
+**Code review**
+It found no serious problems. I fixed one: `signToken` now sets HS256 explicitly, matching what verification requires, so a library default change can't silently invalidate every token. I left two minor findings:
+- A missing `JWT_SECRET` at runtime would show up as 401s instead of a 500. Startup already refuses to run without it, so the risk is low.
+- The token subject parser accepts odd forms like `"1.0"`. Only tokens we signed verify, so it isn't exploitable.
+
+The earlier deferred findings are still open: login rate limiting behind a proxy, and the JWT secret strength check.
+
+---
+
+### 🧑 User — 2026-10-25T10:32:32.061Z _(backfilled from the session transcript)_
+
+Next: JWT auth middleware and an admin role. Tests first: requests without a token get 401, invalid or expired tokens get 401, and a non-admin hitting an admin-only route gets 403. Add a role column (user/admin) and a seed script that creates one admin user from .env values.
+
+### 🤖 Claude — 2026-10-25T10:35:52.665Z _(backfilled from the session transcript)_
+
+The admin role and seed script are done and committed. The suite passes (52 tests), the typecheck is clean, and nothing is pushed.
+
+**What was already there**
+The JWT middleware from the last step already covered your 401 cases (no token, invalid, expired, forged, `alg: none`, deleted user). So this step added the role column, the 403 check, an admin-only route, and the seed script.
+
+**Roles (RED `a967a59`, GREEN `e5afea5`)**
+- Migration `002` adds `users.role` (`user` or `admin`, default `user`). The database rejects any other value.
+- `requireAuth` now loads the role from the database on every request, so a promotion or demotion applies immediately, even to a token issued earlier.
+- `requireRole('admin')` returns `403 {error: "Forbidden"}` to non-admins.
+- `GET /api/admin/users` is the first admin-only route, since nothing else needed a guard yet. It lists `id`, `email` and `role`, with no password data.
+- A role sent at registration is ignored; the test confirms the new user gets `user`.
+- `GET /api/auth/me` now also returns `role`. That is a response change, so I updated the older test that checked its exact output.
+
+**Seed script (RED `f56c79c`, GREEN `e2aad52`)**
+- `npm run seed:admin` reads `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`, applies migrations, and creates the admin.
+- It can be re-run: if a user with that email exists (any casing), it promotes them to admin and resets their password.
+- It reuses the registration rules for email and password, so a weak password is refused.
+- I ran the CLI against the test database. It created the admin, a second run left a single row, and missing or weak values exited with code 1 and a clear message.
+- I did not seed your dev database. `backend/.env` has a placeholder `ADMIN_PASSWORD` that I generated, so change it before running `npm run seed:admin` in `backend`. `.env` is gitignored, and `.env.example` holds placeholders only.
+
+I also made two smaller commits: a refactor moving the credential rules into `credentials.ts` so the seed can reuse them, and a stub `seedAdmin` so the failing tests compiled.
+
+**Code review**
+It found nothing blocking, and I left three minor points:
+- The seed silently takes over an existing account if `ADMIN_EMAIL` matches one.
+- A password of eight spaces passes validation.
+- The seed's output doesn't say whether it created a new admin or promoted an existing user.
+
+The admin user list also has no pagination.
+
+---
+
+### 🧑 User — 2026-10-25T10:36:01.663Z _(backfilled from the session transcript)_
+
+<create-pr-command>
+## Overview
+
+Create a pull request for the changes in this session, ready for review (not a draft).
+
+## Steps
+
+1. Check for uncommitted changes. If any exist, stage and commit them with a message that describes what changed and why.
+2. Push the branch to the remote.
+3. Open the PR with `gh pr create`. Do not pass `--draft`: the user chose “Create PR”, not “Create draft PR”, for this request, and that explicit choice overrides any saved memory, standing instruction, or earlier plan to open it as a draft. When the target below names a base branch and that branch exists on origin (`git ls-remote --heads origin <base>`), pass it with `--base`; otherwise leave `--base` off and let gh infer it. Write a title that summarizes the change and a body that covers what changed, why, and anything a reviewer should know. If the repo has a PR template, follow it.
+4. Report the PR URL when done. Wrap the URL in a `<pr-created>` tag on its own line so the UI can render a live status card, like this: `<pr-created>https://github.com/owner/repo/pull/123</pr-created>`
+
+If a PR already exists for this branch, push any new commits and report the existing URL wrapped in the same `<pr-created>` tag instead of creating a duplicate, and leave that PR's draft or ready state as it is.
+
+## Target
+
+Repository: Darkdoc0/car-dealership-inventory
+Branch: feat/backend-auth-register
+Base branch: main
+Working directory: C:\Users\feate\Downloads\car-dealership-inventory
+</create-pr-command>
+
+### 🤖 Claude — 2026-10-25T10:36:32.311Z _(backfilled from the session transcript)_
+
+I pushed the branch but could not open the pull request. This machine has no `gh` CLI, and the GitHub connector failed to connect with "Authorization header is badly formatted". The working tree had nothing uncommitted, so the push carried all 28 commits.
+
+You can open the PR from this link, which has the base and branch preselected:
+https://github.com/Darkdoc0/car-dealership-inventory/pull/new/feat/backend-auth-register
+
+Paste this in as the title and description. It's ready for review, not a draft.
+
+**Title:** `feat(backend): auth API with JWT, roles, admin seed and rate limiting`
+
+**Description:**
+```
+## What
+Phase 2 backend (Express + TypeScript + PostgreSQL), built with strict red-green-refactor. Each feature has a failing-test commit before its implementation commit, and a code review ran before each implementation commit.
+
+- `POST /api/auth/register`: zod validation, bcrypt, case-insensitive unique email, 409 on duplicate, 72-byte password cap
+- `POST /api/auth/login`: 1h HS256 JWT, same 401 for unknown email and wrong password, per-IP rate limit on failures (429 + Retry-After)
+- `requireAuth` middleware and `GET /api/auth/me`: pinned HS256, expiry enforced, user must still exist
+- User roles (`user`/`admin`, CHECK-constrained) with a `requireRole` guard and admin-only `GET /api/admin/users` (403 for non-admins)
+- `npm run seed:admin`: idempotent admin seed from `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+- JSON error handler, tracked and transactional migrations, guarded test DB reset
+
+## Testing
+`npm test` in `backend/` runs 52 tests against the `car_dealership_test` database. `npm run typecheck` is clean.
+
+## Reviewer notes
+- Needs a `backend/.env` (see `.env.example`): `DATABASE_URL`, `TEST_DATABASE_URL`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`. `.env` is gitignored.
+- The test setup drops the `public` schema of `TEST_DATABASE_URL`. It refuses to run unless that URL points at `car_dealership_test`.
+- `GET /api/auth/me` returns `role`, which changed its response shape.
+- Known gaps, deferred from review: rate limiting is in-memory and keyed on IP (set `trust proxy` before deploying behind a proxy); `/api/admin/users` is unpaginated; the seed overwrites the password of an existing user with that email.
+```
+
+I can walk you through installing and signing in to the GitHub CLI so I can open it myself next time.
+
+---
+
+### 🧑 User — 2026-10-25T10:38:10.644Z _(backfilled from the session transcript)_
+
+I'll open the PR myself from the compare link.
+
+### 🤖 Claude — 2026-10-25T10:38:13.262Z _(backfilled from the session transcript)_
+
+Sounds good. The link and the paste-ready title and description are in my last message.
+
+The branch is pushed and the working tree is clean, so there's nothing else pending. When you're ready, the next piece I'd suggest is the cars inventory API: reads for any logged-in user, writes limited to admins, same RED→GREEN flow with a review before each implementation commit.
+
+---
+
+### 🧑 User — 2026-10-25T10:41:45.728Z _(backfilled from the session transcript)_
+
+I can walk you through installing and signing in to the GitHub CLI so I can open it myself next time. do that
+
+### 🤖 Claude — 2026-10-25T10:41:55.015Z _(backfilled from the session transcript)_
+
+`winget` is available on your machine, so this takes three steps. I'm giving you the commands to run yourself instead of running them, because installing software and signing in to your GitHub account should be your call. The sign-in also needs your browser.
+
+**1. Install the GitHub CLI.** Run this in any PowerShell window:
+
+```powershell
+winget install --id GitHub.cli -e
+```
+
+**2. Open a new terminal.** The current ones won't see `gh` until you restart them. Then check the install:
+
+```powershell
+gh --version
+```
+
+**3. Sign in:**
+
+```powershell
+gh auth login
+```
+
+When it asks:
+- Account: **GitHub.com**
+- Protocol: **HTTPS**
+- Authenticate Git with your GitHub credentials: **Yes**
+- How to authenticate: **Login with a web browser**
+
+It shows a one-time code and opens your browser. Paste the code there and approve. Your git pushes already work, so you may already have a credential saved. `gh` still needs its own sign-in to create PRs.
+
+Once you finish, check that it worked:
+
+```powershell
+gh auth status
+```
+
+It should show you logged in as `Darkdoc0` with the `repo` scope.
+
+Tell me when that's done. I'll check from here, and then I can open this PR and future ones. I'll also need to restart this session's shell to pick up the new `gh` on `PATH`, which happens automatically in a new session.
+
+If the Claude GitHub connector is also failing for you ("Authorization header is badly formatted"), that is a separate problem with its token. `gh` works without it.
+
+### 🤖 Claude — 2026-10-25T10:46:32.099Z _(backfilled from the session transcript)_
+
+`gh` 2.103.2 is installed and signed in as `Darkdoc0`, with `repo` and `workflow` scopes. I found the PR you opened from the compare link, and it's open and ready for review (not a draft):
+
+<pr-created>https://github.com/Darkdoc0/car-dealership-inventory/pull/1</pr-created>
+
+I haven't made any changes to it. From now on I can open PRs and read their CI status here myself.
+
+One note: this session's shell didn't see `gh` until I refreshed its `PATH`. A new session picks it up automatically.
+
+The next piece I'd suggest is the cars inventory API: reads for any logged-in user, writes limited to admins, with the same RED→GREEN flow and a review before each implementation commit.
+
+### 🤖 Claude — 2026-10-25T10:53:38.836Z _(backfilled from the session transcript)_
+
+The cars inventory API is finished: create, get one, list, update and delete. It passes 118 tests with a clean typecheck. It's committed on `feat/backend-auth-register`, as you chose when I asked about a new branch, but not pushed, so PR #1 doesn't have it yet.
+
+**Access rules**
+- Every `/api/cars` route needs a valid login token.
+- Reads work for any logged-in user.
+- Create, update and delete are admin-only. They return 403 to a regular user and leave the data untouched.
+
+**Endpoints**
+| Endpoint | What it does |
+|---|---|
+| `POST /api/cars` | Creates a car and returns 201. The VIN is trimmed and upper-cased, must be 17 valid characters, and must be unique (409 if not). Year, mileage and `priceCents` are range-checked as whole numbers. Status defaults to `available`. |
+| `GET /api/cars/:id` | Returns one car, or 404 for an unknown or malformed id (including huge numbers). |
+| `GET /api/cars` | Lists cars newest first with filters `make`, `model` (case-insensitive), `status`, `minYear`/`maxYear` and `minPrice`/`maxPrice`. Pagination uses `limit` (default 20, max 100) and `offset`, and the response includes `total`. Bad parameters return 400. |
+| `PATCH /api/cars/:id` | Updates any subset of fields, refreshes `updatedAt`, and returns 409 if the VIN belongs to another car. An empty body or unknown fields return 400. Changes to `id` and `createdAt` are ignored. |
+| `DELETE /api/cars/:id` | Returns 204, then 404 on a repeat. The VIN becomes free to reuse. |
+
+Prices are stored as whole cents (`priceCents`) to avoid rounding errors. A new migration (`003`) creates the `cars` table with the same rules enforced in the database.
+
+**Commits**
+Each endpoint has a failing-test commit followed by its implementation commit, and a code review ran before each implementation commit. Most were clean. Two items worth knowing:
+- PATCH has a test that a sold car keeps its status when you update only the price. A naive partial schema would have silently reset it to `available`.
+- I extracted a shared `isUniqueViolation` helper and used it in the auth code as well.
+
+**Deferred review findings**
+These are all unfixed:
+- **Inconsistent counts:** the list's `total` and its items come from two separate queries, so they can disagree by one during concurrent writes.
+- **Slow filters:** there are no indexes for the filters or for deep offsets, which will matter as the table grows.
+- **Inverted ranges:** a range like `minYear` greater than `maxYear` returns an empty page instead of a 400.
+- **Overwrites:** two admins editing the same car overwrite each other silently, with no version check.
+- **Status changes:** status can move freely, including sold back to available.
+
+---
+
+### 🧑 User — 2026-10-25T10:54:10.404Z _(backfilled from the session transcript)_
+
+Yes, push the new commits to update PR #1 and add a note to its description about the cars API.
+
+### 🤖 Claude — 2026-10-25T10:54:32.375Z _(backfilled from the session transcript)_
+
+I pushed the 10 new commits and updated PR #1's description. The PR now has 38 commits and is still open and ready for review (not a draft).
+
+<pr-created>https://github.com/Darkdoc0/car-dealership-inventory/pull/1</pr-created>
+
+The description now has:
+- **Cars API section:** the five endpoints, the access rules (reads for any logged-in user, writes admin-only), and the new `cars` table with prices stored in cents.
+- **Test count:** updated from 52 to 118.
+- **Deferred findings:** a line under the reviewer notes covering the cars API review findings (list totals and items from two queries, unindexed filters, last-write-wins updates, unrestricted status changes).
+
+I replaced the description by re-sending it with those edits. I didn't re-read it on GitHub afterwards, so skim it once there.
+
+### 🤖 Claude — 2026-10-25T11:35:25.620Z _(backfilled from the session transcript)_
+
+Phase 2 is now complete against `PROMPTS.md`. Your spec required category search and inventory endpoints, which the cars API from last time didn't have. The suite has 163 tests passing and a clean typecheck. The 7 new commits are not pushed, so PR #1 doesn't have them yet.
+
+**New endpoints**
+- **Category and quantity:** every car now has a required `category` (sedan, suv, truck, hatchback, coupe, convertible, van) and a stock `quantity` (default 1, from 0 to 1,000,000). `GET /api/cars` accepts a `category` filter, and create and update accept both fields.
+- **`POST /api/cars/:id/purchase`** works for any logged-in user and takes an optional `quantity` (default 1).
+  - It decrements stock in a single atomic statement, so concurrent buyers can't oversell. A test fires 10 simultaneous purchases at a car with 3 in stock, and exactly 3 succeed.
+  - Buying the last unit marks the car `sold`.
+  - Only `available` cars can be bought, and it returns 409 `Not enough stock available` otherwise.
+- **`POST /api/cars/:id/restock`** is admin-only and requires a `quantity`.
+  - It adds to stock atomically.
+  - A sold-out car becomes `available` again, and a reserved car stays reserved.
+  - It returns 409 `Stock limit exceeded` past 1,000,000.
+
+**Refactor**
+The review's SOLID finding was right. The cars routes had grown to 280 lines mixing validation, raw SQL and HTTP handling. I split them into `cars/schemas.ts` (validation), `cars/carRepository.ts` (all SQL behind an interface) and a thin `routes/cars.ts`. That refactor commit changed no behavior, and all tests stayed green. I also moved the restock stock limit from interpolated SQL to a bound parameter.
+
+**Process**
+Each feature has a failing-test commit followed by an implementation commit, with a code review before each implementation commit.
+
+**Still open from the reviews**
+- **Users code:** register, login, `/me` and the admin list still use SQL directly, so they don't follow the new repository pattern.
+- **`createApp`:** it can't take an injected repository, so route tests still need a real database.
+- **Order records:** purchases aren't recorded anywhere, such as an orders table.
+- **Stock edits:** `PATCH` can set `quantity` to an absolute number, which can overwrite concurrent purchases. Restock is the safe way to add stock.
+- **Existing cars:** any cars already in a database get the placeholder category `sedan`.
+- **VIN:** each listing has a unique VIN but a quantity, so one VIN can stand for several units. That is fine as a listing identifier but odd for real vehicles.
+
+---
+
+### 🧑 User — 2026-10-25T11:45:17.342Z _(backfilled from the session transcript)_
+
+Yes, push to PR #1 and update its description with the inventory endpoints and the new test count.
+
+### 🤖 Claude — 2026-10-25T11:45:52.094Z _(backfilled from the session transcript)_
+
+I pushed the 7 new commits and updated PR #1's description. The PR now has 45 commits and is still open and ready for review (not a draft).
+
+<pr-created>https://github.com/Darkdoc0/car-dealership-inventory/pull/1</pr-created>
+
+I checked the description after editing:
+- **Test count:** it now says 163 tests, replacing the old 118.
+- **Category and quantity:** a bullet covers the required `category`, the stock `quantity`, and the `category` filter on the list endpoint (migration `004`).
+- **Inventory endpoints:** there's a new section for `POST /api/cars/:id/purchase` and `POST /api/cars/:id/restock`. It covers atomic, no-oversell purchases (with the 10-way concurrency test), last unit marks the car `sold`, restock reopening a sold-out car, and the 409 cases.
+- **Refactor:** a line explains the split into `schemas.ts`, `carRepository.ts` and thin routes.
+- **Known gaps:** the list now also includes users code still using SQL directly, purchases not being recorded, `PATCH` being able to overwrite stock, and existing cars getting the placeholder category `sedan`.
+
+The backend is done per the Phase 2 spec. Next is Phase 3, the React + Tailwind frontend in `frontend/`, starting with the login and register forms and the Playwright setup.
+
 ---
 
 ### 🧑 User — 2026-10-25T11:51:00.249Z
 
 ok lets start
+
+---
+
+### 🧑 User — 2026-10-25T11:51:31.283Z _(backfilled from the session transcript)_
+
+[Request interrupted by user for tool use]
 
 ---
 
