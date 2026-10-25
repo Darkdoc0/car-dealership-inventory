@@ -26,6 +26,36 @@ describe('jwt helpers', () => {
     expect(() => verifyToken(token)).toThrow();
   });
 
+  describe('secret strength in production', () => {
+    const originalEnv = { secret: process.env.JWT_SECRET, nodeEnv: process.env.NODE_ENV };
+    afterEach(() => {
+      process.env.JWT_SECRET = originalEnv.secret;
+      process.env.NODE_ENV = originalEnv.nodeEnv;
+    });
+
+    it('refuses a secret shorter than 32 characters', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.JWT_SECRET = 'x'.repeat(31);
+
+      expect(() => getJwtSecret()).toThrow('JWT_SECRET must be at least 32 characters in production');
+      expect(() => signToken(1)).toThrow('at least 32 characters');
+    });
+
+    it('accepts a secret of 32 characters or more', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.JWT_SECRET = 'x'.repeat(32);
+
+      expect(getJwtSecret()).toBe('x'.repeat(32));
+    });
+
+    it('allows a short secret outside production, for development and tests', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.JWT_SECRET = 'dev-only-change-me';
+
+      expect(getJwtSecret()).toBe('dev-only-change-me');
+    });
+  });
+
   describe('without JWT_SECRET', () => {
     const original = process.env.JWT_SECRET;
     beforeEach(() => delete process.env.JWT_SECRET);
