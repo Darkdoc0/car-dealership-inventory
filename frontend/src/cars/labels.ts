@@ -1,4 +1,10 @@
-import type { CarCategory } from '../api/types';
+import type { CarCategory, CarStatus } from '../api/types';
+
+export const STATUS_LABELS: Record<CarStatus, string> = {
+  available: 'Available',
+  reserved: 'Reserved',
+  sold: 'Sold',
+};
 
 export const CATEGORY_LABELS: Record<CarCategory, string> = {
   sedan: 'Sedan',

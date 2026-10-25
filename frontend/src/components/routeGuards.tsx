@@ -17,6 +17,13 @@ export function RequireAuth() {
   return <Outlet />;
 }
 
+/** Routes only an admin may open; place inside RequireAuth. Everyone else is sent to the vehicle list. */
+export function RequireAdmin() {
+  const { user } = useAuth();
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
 /** Routes for signed-out visitors (sign in, register); signed-in users are sent to the dashboard. */
 export function GuestOnly() {
   const { status } = useAuth();

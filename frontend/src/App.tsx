@@ -3,7 +3,8 @@ import { ApiProvider } from './api/ApiContext';
 import { AuthProvider } from './auth/AuthContext';
 import type { Session } from './auth/session';
 import AppLayout from './components/AppLayout';
-import { GuestOnly, RequireAuth } from './components/routeGuards';
+import { GuestOnly, RequireAdmin, RequireAuth } from './components/routeGuards';
+import AdminCarsPage from './pages/AdminCarsPage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -22,6 +23,9 @@ export default function App({ session }: { session: Session }) {
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardPage />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin" element={<AdminCarsPage />} />
+              </Route>
             </Route>
           </Route>
           <Route path="*" element={<NotFoundPage />} />
