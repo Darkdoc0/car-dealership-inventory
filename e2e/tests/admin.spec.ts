@@ -67,17 +67,36 @@ test.describe('adding and editing vehicles', () => {
     await expect(card.getByText('12,500 mi')).toBeVisible();
   });
 
+  test('a vehicle can be added with only make, model, category and price', async ({ page }) => {
+    const make = unique('Bare');
+    await signInAsAdmin(page);
+    await page.goto('/admin/cars/new');
+
+    await page.getByLabel('Make').fill(make);
+    await page.getByLabel('Model').fill('Basic');
+    await page.getByLabel('Price ($)').fill('9999');
+    await page.getByLabel('Category').selectOption('van');
+    await page.getByRole('button', { name: 'Save vehicle' }).click();
+
+    await expect(page.getByText(`Added ${make} Basic`)).toBeVisible();
+    await page.getByRole('link', { name: 'Car Dealership' }).click();
+    await searchByMake(page, make);
+    const card = vehicleCard(page, `${make} Basic`);
+    await expect(card).toBeVisible();
+    await expect(card.getByText('$9,999.00')).toBeVisible();
+    await expect(card).not.toContainText('null');
+  });
+
   test('the add form lists every problem at once and puts the cursor in the first bad field', async ({ page }) => {
     await signInAsAdmin(page);
     await page.goto('/admin/cars/new');
 
     await page.getByRole('button', { name: 'Save vehicle' }).click();
 
-    await expect(page.getByText('VIN must be 17 letters and digits (no I, O or Q)')).toBeVisible();
     await expect(page.getByText('Make is required')).toBeVisible();
     await expect(page.getByText('Model is required')).toBeVisible();
     await expect(page.getByText('Choose a category')).toBeVisible();
-    await expect(page.getByLabel('VIN')).toBeFocused();
+    await expect(page.getByLabel('Make')).toBeFocused();
     await expect(page).toHaveURL(/\/admin\/cars\/new$/);
   });
 

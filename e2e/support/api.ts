@@ -38,7 +38,7 @@ async function adminToken(request: APIRequestContext): Promise<string> {
 /** Adds a vehicle straight through the API (as the seeded admin), bypassing the UI. */
 export async function seedCar(request: APIRequestContext, seed: CarSeed) {
   const token = await adminToken(request);
-  const res = await request.post(`${API_URL}/api/cars`, {
+  const res = await request.post(`${API_URL}/api/vehicles`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       vin: uniqueVin(),
