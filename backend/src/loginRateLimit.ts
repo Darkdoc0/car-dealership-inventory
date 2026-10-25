@@ -1,4 +1,5 @@
 import { rateLimit } from 'express-rate-limit';
+import { sendError } from './httpErrors';
 
 export const DEFAULT_LOGIN_MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -12,7 +13,7 @@ export function loginRateLimit(maxAttempts: number = DEFAULT_LOGIN_MAX_ATTEMPTS)
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     handler: (_req, res) => {
-      res.status(429).json({ error: 'Too many login attempts, try again later' });
+      sendError(res, 429, 'Too many login attempts, try again later');
     },
   });
 }
