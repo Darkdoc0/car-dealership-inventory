@@ -8,3 +8,10 @@ export class ApiError extends Error {
     this.status = status;
   }
 }
+
+const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
+
+/** A message that is safe to show a user for any thrown value. */
+export function messageFrom(error: unknown): string {
+  return error instanceof ApiError ? error.message : GENERIC_MESSAGE;
+}
