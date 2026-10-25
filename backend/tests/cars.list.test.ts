@@ -77,7 +77,7 @@ describe('GET /api/vehicles', () => {
     const middle = await createCar({ make, year: 2015, priceCents: 1000000 });
     await createCar({ make, year: 2020, priceCents: 2000000 });
 
-    const res = await list({ make, minYear: 2011, maxYear: 2019, minPrice: 1000000, maxPrice: 1000000 });
+    const res = await list({ make, minYear: 2011, maxYear: 2019, minPrice: 10000, maxPrice: 10000 });
 
     expect(res.body.items).toEqual([middle]);
     expect(res.body.total).toBe(1);
@@ -112,7 +112,7 @@ describe('GET /api/vehicles', () => {
     ['an unknown status', { status: 'stolen' }],
     ['an unknown category', { category: 'spaceship' }],
     ['a non-numeric minYear', { minYear: 'abc' }],
-    ['a fractional maxPrice', { maxPrice: 10.5 }],
+    ['a maxPrice with fractions of a cent', { maxPrice: 10.005 }],
   ])('rejects %s with 400', async (_label, query) => {
     const res = await list(query);
 
