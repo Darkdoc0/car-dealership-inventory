@@ -1,7 +1,7 @@
 # Test-first evidence
 
 This project was built red-green-refactor: for each behavior a failing test was committed on its own, then the code that makes it pass.
-`main` shows only three commits because each pull request was **squash-merged**, so the step-by-step history lives behind the two pull requests:
+PR #1 and PR #2 were **squash-merged**, so `main` shows each as one commit and their step-by-step history lives behind the pull requests. PR #2 and PR #3 are also merged into `main`'s history without squashing (see below), so their red-green commits show in `git log`:
 
 - [PR #1](https://github.com/Darkdoc0/car-dealership-inventory/pull/1): the backend, the frontend and the end-to-end tests
 - [PR #2](https://github.com/Darkdoc0/car-dealership-inventory/pull/2): the demo seed, the `.env.example` files and CI
@@ -28,7 +28,7 @@ Generated on 2026-10-25 from the full history of both pull requests: 110 commits
 
 ## Check it yourself
 
-A plain clone of `main` does not contain these commits, so first fetch the pull request commits: `git fetch origin "refs/pull/*/head:refs/remotes/origin/pr/*"`. Then pick any row from the table below and run:
+A plain clone of `main` contains the PR #2 and PR #3 commits but not PR #1's, so to reach the rest fetch the pull request commits: `git fetch origin "refs/pull/*/head:refs/remotes/origin/pr/*"`. Then pick any row from the table below and run:
 
 ```bash
 git checkout <test-commit>        # the failing tests, before any implementation
@@ -85,6 +85,21 @@ Only this pair was replayed by hand for this document. The other rows are the co
 | 31 | add npm run seed to reset the database and load demo data | [`37e67cf`](https://github.com/Darkdoc0/car-dealership-inventory/commit/37e67cf8fa8c7350ec300bc701091237d5f220d3) | [`01f4084`](https://github.com/Darkdoc0/car-dealership-inventory/commit/01f4084a20d4dff14b2982233d3eed67f73f13d7) |
 
 Where one test commit appears in several rows, a single set of tests drove several small implementation steps.
+
+## Aligning the API with the brief (PR #3), visible on `main`
+
+The commits of [PR #2](https://github.com/Darkdoc0/car-dealership-inventory/pull/2) and [PR #3](https://github.com/Darkdoc0/car-dealership-inventory/pull/3) are part of `main`'s history through a merge commit that changes no files (`git merge -s ours`). Run `git log --oneline main` and each failing-test commit is followed by the commit that makes it pass. These are PR #3's pairs, in order; all 13 of its commits carry the co-author trailer.
+
+| Behavior | Failing tests (red) | Implementation (green) |
+|----------|---------------------|------------------------|
+| `/api/vehicles` routes, `PUT /:id`, `GET /search`, `/api/cars` alias | `80912c8` (13 of 14 new tests failed) | `771b2fe` |
+| `price` in dollars, dollar price filters | `087e037` (18 failed) | `7014662` |
+| Optional `vin`, `year` and `mileage` | `dc020fe` (8 of 13 failed) | `ea32f89` |
+| Frontend: new paths and verb, dollar filters, optional fields | `a2d73fb` (15 failed) | `dab1add` |
+
+Not test-first: `230dce2` changes the end-to-end helper's path and adds one browser test in the same commit, written after the frontend worked. The rest of PR #3 is documentation (`7c144bb`, `4ea4da2`, `b212b93`, `2b5b05e`).
+
+The history of [PR #1](https://github.com/Darkdoc0/car-dealership-inventory/pull/1) (the backend, frontend and first end-to-end tests) is deliberately **not** merged into `main`: its early commits contain the author's redacted local database password. It stays reachable through the PR #1 links above.
 
 ## Refactors
 
