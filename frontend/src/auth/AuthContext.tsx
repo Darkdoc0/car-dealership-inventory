@@ -3,7 +3,7 @@ import { ApiError } from '../api/errors';
 import type { CurrentUser } from '../api/types';
 import type { Session } from './session';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
+type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
 export interface AuthState {
   status: AuthStatus;

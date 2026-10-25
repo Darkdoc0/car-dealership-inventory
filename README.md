@@ -1,11 +1,13 @@
 # Car Dealership Inventory System
 
+[![CI](https://github.com/Darkdoc0/car-dealership-inventory/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Darkdoc0/car-dealership-inventory/actions/workflows/ci.yml)
+
 A full-stack inventory app for a car dealership, built as a TDD kata. Shoppers sign up, search the stock and buy a vehicle;
 admins add, edit, restock and delete vehicles.
 
 - **Backend:** Node.js, TypeScript, Express 5, PostgreSQL 16, JWT authentication
 - **Frontend:** React 19, TypeScript, Tailwind CSS 4, Vite
-- **Tests:** Jest (backend), Vitest + Testing Library (frontend), Playwright (end to end) — 442 tests, all passing
+- **Tests:** Jest (backend), Vitest + Testing Library (frontend), Playwright (end to end) — 465 tests, all passing
 
 > **Status:** feature-complete for the kata brief. Known limitations are listed [below](#known-limitations).
 
@@ -58,8 +60,8 @@ CREATE DATABASE car_dealership_test;
 cd backend
 npm install
 cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-# edit .env: set the database password, a JWT_SECRET, and the admin email and password
-npm run seed:admin          # applies the migrations and creates (or promotes) the admin user
+# edit .env: replace the <placeholders> (database password, a JWT_SECRET)
+npm run seed                # resets the database and loads the demo users and vehicles (see below)
 npm run dev                 # API on http://localhost:3000
 ```
 
@@ -73,9 +75,25 @@ npm install
 npm run dev                 # http://localhost:5173
 ```
 
-The dev server forwards `/api` to the backend on port 3000, so the browser only ever talks to one origin and no CORS setup is needed.
+The dev server forwards `/api` to the backend on port 3000, so the browser only ever talks to one origin and no CORS setup is needed. To change the port or the backend address, copy `frontend/.env.example` to `frontend/.env` (optional).
 
-Open <http://localhost:5173>, register an account to shop, or sign in with the admin email and password from `backend/.env` to manage vehicles.
+Open <http://localhost:5173> and sign in with one of the [demo logins](#demo-data-and-logins).
+
+### Demo data and logins
+
+`npm run seed` (in `backend/`) **resets the database named in `DATABASE_URL`**: it drops everything in it, re-applies the migrations, and creates:
+
+- one admin and one normal user (below)
+- 15 vehicles across all seven categories: 11 in stock, 1 reserved (shows a disabled "Reserved" button) and **3 sold out at quantity 0** (a disabled "Sold out" button)
+
+| Role | Email | Password | Can |
+|------|-------|----------|-----|
+| Admin | `admin@dealership.test` | `Admin-Passw0rd!` | everything a shopper can, plus the **Manage vehicles** screens (add, edit, restock, delete) |
+| Shopper | `shopper@dealership.test` | `Shopper-Passw0rd!` | search and buy vehicles |
+
+These logins are public and for **local development only**. The seed prints them when it finishes, and it refuses to run when `NODE_ENV=production` or when the database name contains `prod` or `prd`, so they cannot be created on a real deployment. Run it again at any time to get back to this exact starting state (for example after trying out purchases).
+
+If you want an empty database with only your own admin instead, use `npm run seed:admin`, which reads `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `backend/.env` and does not delete anything.
 
 ## Configuration
 
@@ -87,9 +105,11 @@ Open <http://localhost:5173>, register an account to shop, or sign in with the a
 | `TEST_DATABASE_URL` | Connection string for `car_dealership_test` (wiped by the tests) |
 | `PORT` | API port, default `3000` |
 | `JWT_SECRET` | Signs login tokens. In production (`NODE_ENV=production`) it must be at least 32 characters or the server refuses to start |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Used by `npm run seed:admin`. Re-running it promotes an existing user with that email and resets their password |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Used only by `npm run seed:admin`. Re-running it promotes an existing user with that email and resets their password. `npm run seed` ignores them and uses the fixed [demo logins](#demo-data-and-logins) |
 
-Frontend (optional environment variables for `npm run dev`): `PORT` (default `5173`) and `API_PROXY_TARGET` (default `http://localhost:3000`).
+`frontend/.env` (optional; copy of `frontend/.env.example`): `PORT` (default `5173`) and `API_PROXY_TARGET` (default `http://localhost:3000`). A real environment variable overrides the file. Neither value is a secret.
+
+Both `.env.example` files contain only placeholders or defaults; the real `.env` files are git-ignored.
 
 ### Production build
 
@@ -128,6 +148,7 @@ backend/    Express API
   src/cars/          schemas.ts (validation) and carRepository.ts (all SQL for cars, behind an interface)
   src/users/         userRepository.ts (all SQL for users)
   src/middleware/    requireAuth (JWT + user lookup) and requireRole
+  src/demoData.ts    the demo users and 15 vehicles, and the guarded reset behind npm run seed
   migrations/        numbered .sql files, applied once each inside a transaction
   tests/             Jest + Supertest against a real PostgreSQL
 frontend/   React app
@@ -151,7 +172,7 @@ Design choices worth knowing:
 ## Testing
 
 ```bash
-cd backend  && npm test                  # 225 tests; add :coverage for the coverage table
+cd backend  && npm test                  # 248 tests; add :coverage for the coverage table
 cd frontend && npm test                  # 195 tests; add :coverage for the coverage table
 cd e2e      && npm install && npm test   # 22 browser tests, about 45 seconds
 cd e2e      && npm run report            # open the HTML report (traces and screenshots of failures)
@@ -198,4 +219,4 @@ This project was built with **Claude** (Anthropic): the kata brief was written i
 - A few commands ran in the wrong directory (so a test run picked up the wrong suite, and two stray empty folders were left behind until the final audit). A few shell commands mangled template strings and wrote broken files; most were caught before committing, but one reached a commit and was repaired in the next one (`fix(frontend): restore the car fake's VIN template literal`).
 - It first described the frontend's uncovered lines from memory and got two wrong; checking the code revealed two untested behaviors, which now have tests.
 
-**Limits of this record.** [`PROMPTS.md`](PROMPTS.md) is the raw chat log, written by a hook (`.claude/hooks/log-prompts.mjs`). The kata brief itself was written in claude.ai before the hook existed and is pasted at the top. The hook did not capture every turn of the later session, so 11 prompts and 14 replies were **backfilled** afterwards from the Claude Code session transcript. Each backfilled entry is labelled `(backfilled from the session transcript)` in the file, they sit in time order among the live entries, and the live entries were not altered. Two caveats: a reply is recorded as the final message of its turn (as the hook does), not the intermediate tool calls and test output; and the author's local database password, which appeared in the log twice, was replaced with `[REDACTED-DB-PASSWORD]` (the password still exists in the git history of the earliest commits on this branch, and the author is rotating it). The public share link for the claude.ai chat is a placeholder at the top of `PROMPTS.md` for the author to fill in.
+**Limits of this record.** [`PROMPTS.md`](PROMPTS.md) is the raw chat log, written by a hook (`.claude/hooks/log-prompts.mjs`). The kata brief itself was written in claude.ai before the hook existed and is pasted at the top. The hook did not capture every turn of the later session, so 11 prompts and 14 replies were **backfilled** afterwards from the Claude Code session transcript. Each backfilled entry is labelled `(backfilled from the session transcript)` in the file, they sit in time order among the live entries, and the live entries were not altered. Two caveats: a reply is recorded as the final message of its turn (as the hook does), not the intermediate tool calls and test output; and the author's local database password, which appeared in the log twice, was replaced with `[REDACTED-DB-PASSWORD]` (the password still exists in the git history of the earliest commits on this branch, and the author is rotating it). The public share link for the claude.ai chat where the brief was written is at the top of `PROMPTS.md`: <https://claude.ai/share/22be8431-e2b2-4e81-b1ae-a19df5e7036f>.

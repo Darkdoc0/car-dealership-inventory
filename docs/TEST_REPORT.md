@@ -1,11 +1,11 @@
 # Test report
 
 Generated 2026-10-25 from a fresh run of all three suites on `feat/backend-auth-register`.
-All three pass: **442 tests, 0 failures, 0 skipped**.
+All three pass: **465 tests, 0 failures, 0 skipped**.
 
 | Suite | Tool | Tests | Result | Coverage (statements / branches / functions / lines) |
 |-------|------|-------|--------|------------------------------------------------------|
-| Backend (API, database, middleware) | Jest + Supertest, real PostgreSQL | 225 in 26 files | all passed (21 s) | 100% / 100% / 100% / 100% |
+| Backend (API, database, middleware) | Jest + Supertest, real PostgreSQL | 248 in 28 files | all passed (21 s) | 100% / 100% / 100% / 100% |
 | Frontend (components, state, API client) | Vitest + Testing Library | 195 in 17 files | all passed (13 s) | 99.6% / 97.2% / 100% / 100% |
 | End to end (real browser) | Playwright driving Chrome | 22 in 3 files | all passed (45 s) | not measured (see below) |
 
@@ -24,10 +24,10 @@ The end-to-end run resets `car_dealership_test`, seeds one admin user, and uses 
 It drives the Chrome that is installed on the machine; set `E2E_CHANNEL=msedge` to use Edge instead.
 A failing test keeps a screenshot and a trace under `e2e/test-results/`.
 
-## Backend (225 tests, 100% coverage)
+## Backend (248 tests, 100% coverage)
 
 Built red-green-refactor: each feature has a failing-test commit before its implementation commit, and a code review ran before every implementation commit.
-Covered: security headers (helmet), a minimum production JWT secret length, registration and login (hashing, validation, rate limiting, token expiry), the auth middleware (missing, malformed, forged, expired and `alg: none` tokens), roles (admin-only routes answer 403), the cars API (create, get, list with filters and paging, update, delete), atomic purchase and restock (a 10-way concurrency test proves stock never oversells), migrations (tracking, rollback, locking), error handling, startup and shutdown.
+Covered: the demo seed (`npm run seed`: the logins, 15 vehicles in every category with exactly three at zero stock, the full reset, the production guards, and that the README lists the same logins), security headers (helmet), a minimum production JWT secret length, registration and login (hashing, validation, rate limiting, token expiry), the auth middleware (missing, malformed, forged, expired and `alg: none` tokens), roles (admin-only routes answer 403), the cars API (create, get, list with filters and paging, update, delete), atomic purchase and restock (a 10-way concurrency test proves stock never oversells), migrations (tracking, rollback, locking), error handling, startup and shutdown.
 Coverage is for every file Jest reports; the three-line `server.ts` and `seed.ts` entry files cannot be instrumented, and the logic they call (`bootstrap.ts`) is covered.
 
 ## Frontend (195 tests, 99.6% statements)

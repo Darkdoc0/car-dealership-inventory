@@ -11,7 +11,7 @@ import { createAuthRouter } from './routes/auth';
 import { createCarsRouter } from './routes/cars';
 import { createUserRepository, type UserRepository } from './users/userRepository';
 
-export interface AppDependencies {
+interface AppDependencies {
   users: UserRepository;
   cars: CarRepository;
   hasher: PasswordHasher;

@@ -29,7 +29,7 @@ export interface CarSeed {
 
 export const PASSWORD = 'E2eUser-Pass1!';
 
-export async function adminToken(request: APIRequestContext): Promise<string> {
+async function adminToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${API_URL}/api/auth/login`, { data: ADMIN });
   if (!res.ok()) throw new Error(`Admin login failed: ${res.status()}`);
   return (await res.json()).token;

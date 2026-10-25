@@ -3,7 +3,7 @@ export const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
 
 export type CarCategory = (typeof CAR_CATEGORIES)[number];
 export type CarStatus = (typeof CAR_STATUSES)[number];
-export type Role = 'user' | 'admin';
+type Role = 'user' | 'admin';
 
 export interface PublicUser {
   id: number;

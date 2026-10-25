@@ -9,13 +9,13 @@ export interface User {
   role: Role;
 }
 
-export interface UserCredentials {
+interface UserCredentials {
   id: number;
   email: string;
   passwordHash: string;
 }
 
-export type CreateUserResult = { kind: 'ok'; user: { id: number; email: string } } | { kind: 'duplicate_email' };
+type CreateUserResult = { kind: 'ok'; user: { id: number; email: string } } | { kind: 'duplicate_email' };
 
 /** Persistence port for users. Routes and middleware depend on this interface, not on SQL. */
 export interface UserRepository {

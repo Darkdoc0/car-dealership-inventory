@@ -1,7 +1,7 @@
 import { rateLimit } from 'express-rate-limit';
 import { sendError } from './httpErrors';
 
-export const DEFAULT_LOGIN_MAX_ATTEMPTS = 10;
+const DEFAULT_LOGIN_MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 
 /** Limits failed login attempts per client IP; successful logins are not counted. */
