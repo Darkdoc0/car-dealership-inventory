@@ -9,3 +9,5 @@ if (!testUrl || !/\/car_dealership_test(\?|$)/.test(testUrl)) {
 }
 // Tests must never touch the dev database.
 process.env.DATABASE_URL = testUrl;
+
+process.env.JWT_SECRET = 'test-only-jwt-secret';
