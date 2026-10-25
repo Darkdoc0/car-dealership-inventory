@@ -41,9 +41,19 @@ describe('parseCarForm', () => {
     const result = parseCarForm(EMPTY_CAR_FORM);
 
     expect(result.ok).toBe(false);
-    expect(Object.keys((result as { errors: object }).errors).sort()).toEqual(
-      ['category', 'make', 'mileage', 'model', 'price', 'vin', 'year'].sort(),
-    );
+    expect(Object.keys((result as { errors: object }).errors).sort()).toEqual(['category', 'make', 'model', 'price']);
+  });
+
+  it('treats VIN, year and mileage as optional: blank means none', () => {
+    const result = parseCarForm({ ...valid, vin: '  ', year: '', mileage: ' ' });
+
+    expect(result).toMatchObject({ ok: true, input: { vin: null, year: null, mileage: null } });
+  });
+
+  it('still checks an optional field once something is typed', () => {
+    expect(errorsFor({ vin: 'SHORT' }).vin).toBeDefined();
+    expect(errorsFor({ year: '1800' }).year).toBeDefined();
+    expect(errorsFor({ mileage: '-1' }).mileage).toBeDefined();
   });
 
   it.each([
@@ -127,6 +137,12 @@ describe('carToFormValues', () => {
     });
   });
 
+  it('shows missing VIN, year and mileage as empty fields', () => {
+    const values = carToFormValues(makeCar({ vin: null, year: null, mileage: null }));
+
+    expect(values).toMatchObject({ vin: '', year: '', mileage: '' });
+  });
+
   it('round-trips through parseCarForm to the same car fields', () => {
     const car = makeCar({ priceCents: 99 });
 
@@ -156,6 +172,12 @@ describe('changedFields', () => {
 
   it('includes only the fields that differ', () => {
     expect(changedFields(car, { ...same, priceCents: 1, status: 'reserved' })).toEqual({ priceCents: 1, status: 'reserved' });
+  });
+
+  it('sends null to clear an optional field that was emptied, and nothing when it was already empty', () => {
+    expect(changedFields(car, { ...same, vin: null, year: null })).toEqual({ vin: null, year: null });
+    const bare = makeCar({ id: 2, vin: null, year: null, mileage: null });
+    expect(changedFields(bare, { ...same, vin: null, year: null, mileage: null, make: bare.make, model: bare.model, priceCents: bare.priceCents, category: bare.category })).toEqual({});
   });
 
   it('never includes quantity, even when it differs', () => {

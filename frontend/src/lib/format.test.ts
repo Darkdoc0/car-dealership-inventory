@@ -1,4 +1,14 @@
-import { formatMileage, formatPrice } from './format';
+import { carName, formatMileage, formatPrice } from './format';
+
+describe('carName', () => {
+  it('joins year, make and model', () => {
+    expect(carName({ year: 2021, make: 'Toyota', model: 'Corolla' })).toBe('2021 Toyota Corolla');
+  });
+
+  it('leaves out a missing year without a stray gap', () => {
+    expect(carName({ year: null, make: 'Toyota', model: 'Corolla' })).toBe('Toyota Corolla');
+  });
+});
 
 describe('formatPrice', () => {
   it.each([
