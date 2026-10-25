@@ -66,6 +66,19 @@ describe('RegisterPage', () => {
     await fill('member@example.com', 'short', 'short');
     await submit();
 
+    expect(await screen.findByRole('alert')).toHaveTextContent('Password must be at least 8 characters');
+    expect(session.api.register).not.toHaveBeenCalled();
+  });
+
+  it('refuses a password longer than 72 bytes without calling the API', async () => {
+    const session = renderRegister();
+    await screen.findByRole('heading', { name: 'Create an account' });
+    const tooLong = 'a'.repeat(73);
+
+    await fill('member@example.com', tooLong, tooLong);
+    await submit();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Password must be at most 72 bytes');
     expect(session.api.register).not.toHaveBeenCalled();
   });
 
