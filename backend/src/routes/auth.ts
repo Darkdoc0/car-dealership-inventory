@@ -1,21 +1,12 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { BCRYPT_COST, registerSchema, withinBcryptLimit } from '../credentials';
 import { pool } from '../db';
 import { signToken } from '../jwt';
 import { requireAuth } from '../middleware/requireAuth';
 
 const UNIQUE_VIOLATION = '23505';
-// bcrypt only hashes the first 72 bytes, so longer passwords would silently collide.
-const BCRYPT_MAX_BYTES = 72;
-const BCRYPT_COST = 10;
-
-const withinBcryptLimit = (p: string) => Buffer.byteLength(p, 'utf8') <= BCRYPT_MAX_BYTES;
-
-const registerSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(8).refine(withinBcryptLimit),
-});
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
