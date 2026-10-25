@@ -1,0 +1,24 @@
+#!/bin/sh
+# Appends the AI co-authorship trailer required by the kata's AI Usage Policy.
+#
+# Format (per the kata spec): two empty lines after the message body,
+# then the Co-authored-by trailer.
+#
+# Opt out for a commit written entirely by hand:
+#   NO_AI=1 git commit -m "..."
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+TRAILER="Co-authored-by: Claude <AI@users.noreply.github.com>"
+
+# Skip merges, squashes, and explicit opt-outs.
+[ "$COMMIT_SOURCE" = "merge" ] && exit 0
+[ "$COMMIT_SOURCE" = "squash" ] && exit 0
+[ -n "$NO_AI" ] && exit 0
+
+# Don't add the trailer twice (e.g. on --amend).
+grep -qiF "$TRAILER" "$COMMIT_MSG_FILE" && exit 0
+
+# Strip trailing blank lines, then append two empty lines + trailer.
+printf '%s\n\n\n%s\n' "$(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$COMMIT_MSG_FILE")" "$TRAILER" > "$COMMIT_MSG_FILE.tmp" \
+  && mv "$COMMIT_MSG_FILE.tmp" "$COMMIT_MSG_FILE"
