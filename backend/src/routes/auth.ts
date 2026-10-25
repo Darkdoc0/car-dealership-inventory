@@ -8,7 +8,7 @@ const UNIQUE_VIOLATION = '23505';
 const BCRYPT_MAX_BYTES = 72;
 
 const registerSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8).refine((p) => Buffer.byteLength(p, 'utf8') <= BCRYPT_MAX_BYTES),
 });
 
