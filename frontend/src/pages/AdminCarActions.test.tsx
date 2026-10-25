@@ -52,6 +52,14 @@ describe('restocking from the admin list', () => {
     expect(session.api.restockCar).not.toHaveBeenCalled();
   });
 
+  it('moves focus into the quantity field when it opens', async () => {
+    setup();
+
+    await openRestock();
+
+    expect(quantityField()).toHaveFocus();
+  });
+
   it('adds the stock, shows the new count and confirms', async () => {
     const { session } = setup();
     session.api.restockCar.mockResolvedValue(corolla({ quantity: 8 }));
@@ -141,6 +149,27 @@ describe('deleting from the admin list', () => {
     expect(screen.getByText(`Delete ${NAME}?`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm delete' })).toBeInTheDocument();
     expect(session.api.deleteCar).not.toHaveBeenCalled();
+  });
+
+  it('moves focus to Cancel so a stray Enter does not delete anything', async () => {
+    setup();
+
+    await askToDelete();
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  });
+
+  it('treats a vehicle that someone else already deleted as deleted and refreshes the list', async () => {
+    const { session } = setup();
+    session.api.deleteCar.mockRejectedValue(new ApiError(404, 'Car not found'));
+    await askToDelete();
+    const callsBefore = session.api.listCars.mock.calls.length;
+
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
+
+    expect(await screen.findByText('Already deleted: 2021 Toyota Corolla')).toBeInTheDocument();
+    await waitFor(() => expect(session.api.listCars.mock.calls.length).toBeGreaterThan(callsBefore));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('keeps the vehicle when the admin cancels', async () => {
