@@ -1,5 +1,5 @@
 import type { ApiClient } from '../api/client';
-import type { CurrentUser } from '../api/types';
+import type { Car, CarListResult, CurrentUser } from '../api/types';
 import type { Session } from '../auth/session';
 import type { TokenStore } from '../auth/tokenStorage';
 
@@ -56,3 +56,28 @@ export function createFakeSession(options: { token?: string | null; user?: Curre
 
 export const member: CurrentUser = { id: 1, email: 'member@example.com', role: 'user' };
 export const admin: CurrentUser = { id: 2, email: 'admin@example.com', role: 'admin' };
+
+let nextCarId = 1;
+
+export function makeCar(overrides: Partial<Car> = {}): Car {
+  const id = overrides.id ?? nextCarId++;
+  return {
+    id,
+    vin: ,
+    make: 'Toyota',
+    model: 'Corolla',
+    year: 2021,
+    mileage: 42000,
+    priceCents: 1850000,
+    category: 'sedan',
+    quantity: 3,
+    status: 'available',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function makePage(items: Car[], total = items.length, limit = 12, offset = 0): CarListResult {
+  return { items, total, limit, offset };
+}
