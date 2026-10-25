@@ -11,7 +11,7 @@ const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceC
 
 const nonBlank = z.string().trim().min(1).max(100);
 
-export const carInputSchema = z.object({
+const carFields = z.object({
   vin: z
     .string()
     .trim()
@@ -26,8 +26,25 @@ export const carInputSchema = z.object({
     .refine((y) => y <= new Date().getFullYear() + 1),
   mileage: z.number().int().min(0).max(10_000_000),
   priceCents: z.number().int().min(0).max(2_000_000_000),
-  status: z.enum(CAR_STATUSES).default('available'),
+  status: z.enum(CAR_STATUSES),
 });
+
+export const carInputSchema = carFields.extend({ status: z.enum(CAR_STATUSES).default('available') });
+
+// Built from carFields, not carInputSchema: a default on status would reset it on every partial update.
+export const carUpdateSchema = carFields
+  .partial()
+  .refine((patch) => Object.keys(patch).length > 0, { message: 'At least one field is required' });
+
+const UPDATE_COLUMNS: Record<keyof z.infer<typeof carFields>, string> = {
+  vin: 'vin',
+  make: 'make',
+  model: 'model',
+  year: 'year',
+  mileage: 'mileage',
+  priceCents: 'price_cents',
+  status: 'status',
+};
 
 export const carsRouter = Router();
 
@@ -132,6 +149,33 @@ carsRouter.get('/', async (req, res, next) => {
     ]);
     return res.status(200).json({ items: items.rows, total: count.rows[0].total, limit: q.limit, offset: q.offset });
   } catch (err) {
+    return next(err);
+  }
+});
+
+carsRouter.patch('/:id', requireRole('admin'), async (req, res, next) => {
+  const id = parseId(String(req.params.id));
+  if (id === null) return res.status(404).json(notFound);
+
+  const parsed = carUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid car update: ' + parsed.error.issues.map((i) => i.path.join('.') || 'body').join(', ') });
+  }
+
+  const entries = Object.entries(parsed.data) as [keyof typeof UPDATE_COLUMNS, unknown][];
+  const assignments = entries.map(([key], i) => `${UPDATE_COLUMNS[key]} = $${i + 1}`);
+  const values = entries.map(([, value]) => value);
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE cars SET ${assignments.join(', ')}, updated_at = now()
+       WHERE id = $${values.length + 1} RETURNING ${CAR_COLUMNS}`,
+      [...values, id],
+    );
+    if (!rows[0]) return res.status(404).json(notFound);
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    if (isUniqueViolation(err)) return res.status(409).json({ error: 'A car with this VIN already exists' });
     return next(err);
   }
 });
