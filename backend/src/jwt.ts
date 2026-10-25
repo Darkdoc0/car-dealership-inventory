@@ -9,5 +9,13 @@ export function getJwtSecret(): string {
 }
 
 export function signToken(userId: number): string {
-  return jwt.sign({}, getJwtSecret(), { subject: String(userId), expiresIn: TOKEN_TTL_SECONDS });
+  return jwt.sign({}, getJwtSecret(), { algorithm: 'HS256', subject: String(userId), expiresIn: TOKEN_TTL_SECONDS });
+}
+
+/** Returns the user id from a valid, unexpired HS256 token; throws otherwise. */
+export function verifyToken(token: string): number {
+  const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] });
+  const userId = Number(typeof payload === 'string' ? NaN : payload.sub);
+  if (!Number.isInteger(userId)) throw new Error('Token subject is not a user id');
+  return userId;
 }

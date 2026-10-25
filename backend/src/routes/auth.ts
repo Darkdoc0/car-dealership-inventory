@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { pool } from '../db';
 import { signToken } from '../jwt';
+import { requireAuth } from '../middleware/requireAuth';
 
 const UNIQUE_VIOLATION = '23505';
 // bcrypt only hashes the first 72 bytes, so longer passwords would silently collide.
@@ -70,4 +71,8 @@ authRouter.post('/login', async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
+});
+
+authRouter.get('/me', requireAuth, (req, res) => {
+  res.status(200).json(req.user);
 });
