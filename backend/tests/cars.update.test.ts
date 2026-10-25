@@ -47,6 +47,7 @@ describe('PATCH /api/vehicles/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       ...car,
+      price: 17000,
       priceCents: 1700000,
       mileage: 43000,
       updatedAt: expect.any(String),

@@ -9,6 +9,8 @@ export interface Car {
   model: string;
   year: number;
   mileage: number;
+  /** Dollars, derived from priceCents. */
+  price: number;
   priceCents: number;
   category: CarCategory;
   quantity: number;
@@ -33,7 +35,8 @@ export interface CarRepository {
   restock(id: number, quantity: number): Promise<StockResult>;
 }
 
-const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents", category, quantity, status,
+const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents",
+  (price_cents / 100.0)::float8 AS price, category, quantity, status,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 const UPDATE_COLUMNS: Record<keyof CarUpdate, string> = {

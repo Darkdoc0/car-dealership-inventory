@@ -41,6 +41,7 @@ describe('POST /api/vehicles', () => {
     expect(res.body).toEqual({
       id: expect.any(Number),
       ...payload,
+      price: 18500,
       status: 'available',
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
