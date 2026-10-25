@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
+import { bearer, createUserToken } from './helpers';
 import { pool } from '../src/db';
 
 const app = createApp();
@@ -24,6 +25,21 @@ describe('error handling', () => {
     jest.spyOn(pool, 'query').mockImplementation(() => Promise.reject(new Error('connection to 10.0.0.5 refused')));
 
     const res = await request(app).post('/api/auth/register').send({ email: 'a@example.com', password: 'Sup3rSecret!' });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: 'Internal server error' });
+  });
+
+  it('turns a failing cars query into the generic JSON 500 (async handlers have no try/catch)', async () => {
+    const token = await createUserToken(app, 'user');
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const realQuery = pool.query.bind(pool) as (...args: unknown[]) => Promise<unknown>;
+    jest.spyOn(pool, 'query').mockImplementation(((sql: unknown, ...rest: unknown[]) =>
+      typeof sql === 'string' && sql.includes('FROM cars')
+        ? Promise.reject(new Error('connection to 10.0.0.5 refused'))
+        : realQuery(sql, ...rest)) as never);
+
+    const res = await request(app).get('/api/cars').set(bearer(token));
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'Internal server error' });

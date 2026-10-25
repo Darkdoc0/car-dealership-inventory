@@ -3,7 +3,9 @@ import { errorHandler } from './errorHandler';
 import { loginRateLimit } from './loginRateLimit';
 import { adminRouter } from './routes/admin';
 import { authRouter } from './routes/auth';
-import { carsRouter } from './routes/cars';
+import { createCarRepository } from './cars/carRepository';
+import { pool } from './db';
+import { createCarsRouter } from './routes/cars';
 
 export interface AppOptions {
   /** Failed login attempts allowed per IP per window. */
@@ -16,7 +18,7 @@ export function createApp(options: AppOptions = {}) {
   app.post('/api/auth/login', loginRateLimit(options.loginMaxAttempts));
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
-  app.use('/api/cars', carsRouter);
+  app.use('/api/cars', createCarsRouter(createCarRepository(pool)));
   app.use(errorHandler);
   return app;
 }

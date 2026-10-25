@@ -1,280 +1,92 @@
-import { Router, type NextFunction, type Response } from 'express';
-import { z } from 'zod';
-import { isUniqueViolation, pool } from '../db';
+import { Router } from 'express';
+import type { ZodError } from 'zod';
+import type { CarRepository } from '../cars/carRepository';
+import {
+  carInputSchema,
+  carUpdateSchema,
+  listQuerySchema,
+  parseId,
+  purchaseSchema,
+  restockSchema,
+} from '../cars/schemas';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireRole } from '../middleware/requireRole';
 
-export const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
-export const CAR_CATEGORIES = ['sedan', 'suv', 'truck', 'hatchback', 'coupe', 'convertible', 'van'] as const;
-export const MAX_QUANTITY = 1_000_000;
+const NOT_FOUND = { error: 'Car not found' };
+const DUPLICATE_VIN = { error: 'A car with this VIN already exists' };
 
-const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents", category, quantity, status,
-  created_at AS "createdAt", updated_at AS "updatedAt"`;
+const invalidFields = (prefix: string, error: ZodError) =>
+  ({ error: `${prefix}: ${error.issues.map((i) => i.path.join('.') || 'body').join(', ')}` });
 
-const nonBlank = z.string().trim().min(1).max(100);
+/** HTTP layer for /api/cars: parses and validates input, delegates to the repository, maps results to status codes. */
+export function createCarsRouter(cars: CarRepository) {
+  const router = Router();
+  router.use(requireAuth);
 
-const carFields = z.object({
-  vin: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-HJ-NPR-Z0-9]{17}$/),
-  make: nonBlank,
-  model: nonBlank,
-  year: z
-    .number()
-    .int()
-    .min(1886)
-    .refine((y) => y <= new Date().getFullYear() + 1),
-  mileage: z.number().int().min(0).max(10_000_000),
-  priceCents: z.number().int().min(0).max(2_000_000_000),
-  category: z.enum(CAR_CATEGORIES),
-  quantity: z.number().int().min(0).max(MAX_QUANTITY),
-  status: z.enum(CAR_STATUSES),
-});
+  router.post('/', requireRole('admin'), async (req, res) => {
+    const parsed = carInputSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(invalidFields('Invalid car', parsed.error));
 
-export const carInputSchema = carFields.extend({
-  quantity: carFields.shape.quantity.default(1),
-  status: carFields.shape.status.default('available'),
-});
+    const result = await cars.create(parsed.data);
+    if (result.kind === 'duplicate_vin') return res.status(409).json(DUPLICATE_VIN);
+    return res.status(201).json(result.car);
+  });
 
-// Built from carFields, not carInputSchema: defaults on status/quantity would reset them on every partial update.
-export const carUpdateSchema = carFields
-  .partial()
-  .refine((patch) => Object.keys(patch).length > 0, { message: 'At least one field is required' });
+  router.get('/', async (req, res) => {
+    const parsed = listQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json(invalidFields('Invalid query', parsed.error));
 
-const UPDATE_COLUMNS: Record<keyof z.infer<typeof carFields>, string> = {
-  vin: 'vin',
-  make: 'make',
-  model: 'model',
-  year: 'year',
-  mileage: 'mileage',
-  priceCents: 'price_cents',
-  category: 'category',
-  quantity: 'quantity',
-  status: 'status',
-};
+    const { items, total } = await cars.list(parsed.data);
+    return res.status(200).json({ items, total, limit: parsed.data.limit, offset: parsed.data.offset });
+  });
 
-export const carsRouter = Router();
+  router.get('/:id', async (req, res) => {
+    const id = parseId(String(req.params.id));
+    const car = id === null ? null : await cars.findById(id);
+    return car ? res.status(200).json(car) : res.status(404).json(NOT_FOUND);
+  });
 
-carsRouter.use(requireAuth);
+  router.patch('/:id', requireRole('admin'), async (req, res) => {
+    const id = parseId(String(req.params.id));
+    if (id === null) return res.status(404).json(NOT_FOUND);
+    const parsed = carUpdateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(invalidFields('Invalid car update', parsed.error));
 
-carsRouter.post('/', requireRole('admin'), async (req, res, next) => {
-  const parsed = carInputSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'Invalid car: ' + parsed.error.issues.map((i) => i.path.join('.')).join(', ') });
-  }
-  const c = parsed.data;
+    const result = await cars.update(id, parsed.data);
+    if (result.kind === 'not_found') return res.status(404).json(NOT_FOUND);
+    if (result.kind === 'duplicate_vin') return res.status(409).json(DUPLICATE_VIN);
+    return res.status(200).json(result.car);
+  });
 
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO cars (vin, make, model, year, mileage, price_cents, category, quantity, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${CAR_COLUMNS}`,
-      [c.vin, c.make, c.model, c.year, c.mileage, c.priceCents, c.category, c.quantity, c.status],
-    );
-    return res.status(201).json(rows[0]);
-  } catch (err) {
-    if (isUniqueViolation(err)) return res.status(409).json({ error: 'A car with this VIN already exists' });
-    return next(err);
-  }
-});
+  router.delete('/:id', requireRole('admin'), async (req, res) => {
+    const id = parseId(String(req.params.id));
+    const removed = id !== null && (await cars.remove(id));
+    return removed ? res.status(204).end() : res.status(404).json(NOT_FOUND);
+  });
 
-const MAX_INT4 = 2_147_483_647;
+  router.post('/:id/purchase', async (req, res) => {
+    const id = parseId(String(req.params.id));
+    if (id === null) return res.status(404).json(NOT_FOUND);
+    const parsed = purchaseSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
 
-/** Parses a positive int4 id from a path segment; null when malformed or out of range. */
-export function parseId(raw: string): number | null {
-  if (!/^[1-9]\d{0,9}$/.test(raw)) return null;
-  const id = Number(raw);
-  return id <= MAX_INT4 ? id : null;
-}
+    const result = await cars.purchase(id, parsed.data.quantity);
+    if (result.kind === 'not_found') return res.status(404).json(NOT_FOUND);
+    if (result.kind === 'conflict') return res.status(409).json({ error: 'Not enough stock available' });
+    return res.status(200).json(result.car);
+  });
 
-const notFound = { error: 'Car not found' };
+  router.post('/:id/restock', requireRole('admin'), async (req, res) => {
+    const id = parseId(String(req.params.id));
+    if (id === null) return res.status(404).json(NOT_FOUND);
+    const parsed = restockSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
 
-carsRouter.get('/:id', async (req, res, next) => {
-  const id = parseId(req.params.id);
-  if (id === null) return res.status(404).json(notFound);
+    const result = await cars.restock(id, parsed.data.quantity);
+    if (result.kind === 'not_found') return res.status(404).json(NOT_FOUND);
+    if (result.kind === 'conflict') return res.status(409).json({ error: 'Stock limit exceeded' });
+    return res.status(200).json(result.car);
+  });
 
-  try {
-    const { rows } = await pool.query(`SELECT ${CAR_COLUMNS} FROM cars WHERE id = $1`, [id]);
-    if (!rows[0]) return res.status(404).json(notFound);
-    return res.status(200).json(rows[0]);
-  } catch (err) {
-    return next(err);
-  }
-});
-
-const intParam = (min: number, max: number) =>
-  z
-    .string()
-    .regex(/^\d+$/)
-    .transform(Number)
-    .pipe(z.number().int().min(min).max(max));
-
-const MAX_PAGE_SIZE = 100;
-const DEFAULT_PAGE_SIZE = 20;
-
-const listQuerySchema = z.object({
-  make: nonBlank.optional(),
-  model: nonBlank.optional(),
-  category: z.enum(CAR_CATEGORIES).optional(),
-  status: z.enum(CAR_STATUSES).optional(),
-  minYear: intParam(0, 3000).optional(),
-  maxYear: intParam(0, 3000).optional(),
-  minPrice: intParam(0, MAX_INT4).optional(),
-  maxPrice: intParam(0, MAX_INT4).optional(),
-  limit: intParam(1, MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
-  offset: intParam(0, MAX_INT4).default(0),
-});
-
-carsRouter.get('/', async (req, res, next) => {
-  const parsed = listQuerySchema.safeParse(req.query);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'Invalid query: ' + parsed.error.issues.map((i) => i.path.join('.')).join(', ') });
-  }
-  const q = parsed.data;
-
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-  const add = (sql: string, value: unknown) => {
-    params.push(value);
-    conditions.push(sql.replace('?', `$${params.length}`));
-  };
-  if (q.make) add('lower(make) = lower(?)', q.make);
-  if (q.model) add('lower(model) = lower(?)', q.model);
-  if (q.category) add('category = ?', q.category);
-  if (q.status) add('status = ?', q.status);
-  if (q.minYear !== undefined) add('year >= ?', q.minYear);
-  if (q.maxYear !== undefined) add('year <= ?', q.maxYear);
-  if (q.minPrice !== undefined) add('price_cents >= ?', q.minPrice);
-  if (q.maxPrice !== undefined) add('price_cents <= ?', q.maxPrice);
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  try {
-    const [items, count] = await Promise.all([
-      pool.query(`SELECT ${CAR_COLUMNS} FROM cars ${where} ORDER BY id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [
-        ...params,
-        q.limit,
-        q.offset,
-      ]),
-      pool.query(`SELECT count(*)::int AS total FROM cars ${where}`, params),
-    ]);
-    return res.status(200).json({ items: items.rows, total: count.rows[0].total, limit: q.limit, offset: q.offset });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-carsRouter.patch('/:id', requireRole('admin'), async (req, res, next) => {
-  const id = parseId(String(req.params.id));
-  if (id === null) return res.status(404).json(notFound);
-
-  const parsed = carUpdateSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'Invalid car update: ' + parsed.error.issues.map((i) => i.path.join('.') || 'body').join(', ') });
-  }
-
-  const entries = Object.entries(parsed.data) as [keyof typeof UPDATE_COLUMNS, unknown][];
-  const assignments = entries.map(([key], i) => `${UPDATE_COLUMNS[key]} = $${i + 1}`);
-  const values = entries.map(([, value]) => value);
-
-  try {
-    const { rows } = await pool.query(
-      `UPDATE cars SET ${assignments.join(', ')}, updated_at = now()
-       WHERE id = $${values.length + 1} RETURNING ${CAR_COLUMNS}`,
-      [...values, id],
-    );
-    if (!rows[0]) return res.status(404).json(notFound);
-    return res.status(200).json(rows[0]);
-  } catch (err) {
-    if (isUniqueViolation(err)) return res.status(409).json({ error: 'A car with this VIN already exists' });
-    return next(err);
-  }
-});
-
-carsRouter.delete('/:id', requireRole('admin'), async (req, res, next) => {
-  const id = parseId(String(req.params.id));
-  if (id === null) return res.status(404).json(notFound);
-
-  try {
-    const { rowCount } = await pool.query('DELETE FROM cars WHERE id = $1', [id]);
-    if (!rowCount) return res.status(404).json(notFound);
-    return res.status(204).end();
-  } catch (err) {
-    return next(err);
-  }
-});
-
-const purchaseSchema = z.object({ quantity: carFields.shape.quantity.min(1).default(1) });
-
-// Single conditional UPDATE: the stock check and the decrement are one atomic statement,
-// so concurrent purchases can never oversell.
-carsRouter.post('/:id/purchase', async (req, res, next) => {
-  const id = parseId(String(req.params.id));
-  if (id === null) return res.status(404).json(notFound);
-
-  const parsed = purchaseSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
-  const { quantity } = parsed.data;
-
-  return applyStockChange(
-    res,
-    next,
-    id,
-    `UPDATE cars
-        SET quantity = quantity - $1,
-            status = CASE WHEN quantity - $1 = 0 THEN 'sold' ELSE status END,
-            updated_at = now()
-      WHERE id = $2 AND status = 'available' AND quantity >= $1
-      RETURNING ${CAR_COLUMNS}`,
-    [quantity, id],
-    'Not enough stock available',
-  );
-});
-
-const restockSchema = z.object({ quantity: carFields.shape.quantity.min(1) });
-
-carsRouter.post('/:id/restock', requireRole('admin'), async (req, res, next) => {
-  const id = parseId(String(req.params.id));
-  if (id === null) return res.status(404).json(notFound);
-
-  const parsed = restockSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
-
-  return applyStockChange(
-    res,
-    next,
-    id,
-    `UPDATE cars
-        SET quantity = quantity + $1,
-            status = CASE WHEN status = 'sold' THEN 'available' ELSE status END,
-            updated_at = now()
-      WHERE id = $2 AND quantity + $1 <= ${MAX_QUANTITY}
-      RETURNING ${CAR_COLUMNS}`,
-    [parsed.data.quantity, id],
-    'Stock limit exceeded',
-  );
-});
-
-/**
- * Runs a guarded stock UPDATE that returns the car when its guard passes. When nothing matched,
- * tells a missing car (404) apart from a guard that refused the change (409).
- */
-async function applyStockChange(
-  res: Response,
-  next: NextFunction,
-  id: number,
-  updateSql: string,
-  params: unknown[],
-  conflictMessage: string,
-) {
-  try {
-    const { rows } = await pool.query(updateSql, params);
-    if (rows[0]) return res.status(200).json(rows[0]);
-
-    const exists = await pool.query('SELECT 1 FROM cars WHERE id = $1', [id]);
-    if (!exists.rowCount) return res.status(404).json(notFound);
-    return res.status(409).json({ error: conflictMessage });
-  } catch (err) {
-    return next(err);
-  }
+  return router;
 }
