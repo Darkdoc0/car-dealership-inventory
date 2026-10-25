@@ -57,6 +57,16 @@ describe('AuthProvider', () => {
     expect(session.store.get()).toBeNull();
   });
 
+  it('keeps a stored token when the startup check fails for a reason other than rejection', async () => {
+    const session = createFakeSession({ token: 'jwt-stored' });
+    session.api.me.mockRejectedValue(new ApiError(0, 'Cannot reach the server. Check your connection and try again.'));
+
+    renderProbe(session);
+
+    await waitFor(() => expect(status()).toBe('anonymous'));
+    expect(session.store.get()).toBe('jwt-stored');
+  });
+
   it('logs in: stores the token and loads the current user', async () => {
     const session = createFakeSession();
     session.api.login.mockResolvedValue({ token: 'jwt-new', user: { id: member.id, email: member.email } });
