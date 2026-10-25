@@ -7,9 +7,9 @@ const app = createApp();
 const PASSWORD = 'Sup3rSecret!';
 let n = 0;
 
-async function registerUser() {
+async function registerUser(password = PASSWORD) {
   const email = `login${Date.now()}_${n++}@example.com`;
-  const res = await request(app).post('/api/auth/register').send({ email, password: PASSWORD });
+  const res = await request(app).post('/api/auth/register').send({ email, password });
   return { id: res.body.id as number, email };
 }
 
@@ -51,6 +51,15 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ error: 'Invalid email or password' });
+  });
+
+  it('does not accept a password that only shares the first 72 bytes with the real one', async () => {
+    const real = 'a'.repeat(72);
+    const { email } = await registerUser(real);
+
+    const res = await request(app).post('/api/auth/login').send({ email, password: real + 'extra' });
+
+    expect(res.status).toBe(401);
   });
 
   it('rejects a missing password with 400', async () => {
