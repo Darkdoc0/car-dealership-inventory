@@ -2,11 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { BCRYPT_COST, registerSchema, withinBcryptLimit } from '../credentials';
-import { pool } from '../db';
+import { isUniqueViolation, pool } from '../db';
 import { signToken } from '../jwt';
 import { requireAuth } from '../middleware/requireAuth';
-
-const UNIQUE_VIOLATION = '23505';
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -33,7 +31,7 @@ authRouter.post('/register', async (req, res, next) => {
     );
     return res.status(201).json(rows[0]);
   } catch (err) {
-    if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
+    if (isUniqueViolation(err)) {
       return res.status(409).json({ error: 'Email already registered' });
     }
     return next(err);
