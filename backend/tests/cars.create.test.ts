@@ -47,6 +47,20 @@ describe('POST /api/cars', () => {
     });
   });
 
+  it('defaults quantity to 1 when omitted', async () => {
+    const res = await create(carPayload({ quantity: undefined }));
+
+    expect(res.status).toBe(201);
+    expect(res.body.quantity).toBe(1);
+  });
+
+  it('accepts a quantity of zero for a listing that is out of stock', async () => {
+    const res = await create(carPayload({ quantity: 0 }));
+
+    expect(res.status).toBe(201);
+    expect(res.body.quantity).toBe(0);
+  });
+
   it('accepts an explicit status', async () => {
     const res = await create(carPayload({ status: 'reserved' }));
 
@@ -85,6 +99,11 @@ describe('POST /api/cars', () => {
     ['a negative price', { priceCents: -5 }],
     ['a price sent as a string', { priceCents: '1000' }],
     ['an unknown status', { status: 'stolen' }],
+    ['a missing category', { category: undefined }],
+    ['an unknown category', { category: 'spaceship' }],
+    ['a negative quantity', { quantity: -1 }],
+    ['a fractional quantity', { quantity: 1.5 }],
+    ['a quantity above the limit', { quantity: 1_000_001 }],
   ])('rejects %s with 400', async (_label, override) => {
     const res = await create(carPayload(override));
 

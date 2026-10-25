@@ -50,6 +50,17 @@ describe('GET /api/cars', () => {
     expect(res.body.total).toBe(1);
   });
 
+  it('filters by category', async () => {
+    const make = uniqueMake();
+    await createCar({ make, category: 'sedan' });
+    const suv = await createCar({ make, category: 'suv' });
+
+    const res = await list({ make, category: 'suv' });
+
+    expect(res.body.items).toEqual([suv]);
+    expect(res.body.total).toBe(1);
+  });
+
   it('filters by status', async () => {
     const make = uniqueMake();
     await createCar({ make, status: 'available' });
@@ -99,6 +110,7 @@ describe('GET /api/cars', () => {
     ['a non-numeric limit', { limit: 'ten' }],
     ['a negative offset', { offset: -1 }],
     ['an unknown status', { status: 'stolen' }],
+    ['an unknown category', { category: 'spaceship' }],
     ['a non-numeric minYear', { minYear: 'abc' }],
     ['a fractional maxPrice', { maxPrice: 10.5 }],
   ])('rejects %s with 400', async (_label, query) => {

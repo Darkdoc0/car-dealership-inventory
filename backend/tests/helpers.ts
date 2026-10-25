@@ -18,6 +18,8 @@ export function carPayload(overrides: Record<string, unknown> = {}) {
     year: 2021,
     mileage: 42000,
     priceCents: 1850000,
+    category: 'sedan',
+    quantity: 3,
     ...overrides,
   };
 }

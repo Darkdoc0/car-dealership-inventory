@@ -55,6 +55,15 @@ describe('PATCH /api/cars/:id', () => {
     expect(res.body.createdAt).toBe(car.createdAt);
   });
 
+  it('updates category and quantity', async () => {
+    const car = await createCar();
+
+    const res = await patch(car.id, { category: 'suv', quantity: 9 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ category: 'suv', quantity: 9 });
+  });
+
   it('does not reset status when it is not supplied', async () => {
     const car = await createCar({ status: 'sold' });
 
@@ -125,6 +134,8 @@ describe('PATCH /api/cars/:id', () => {
     ['negative mileage', { mileage: -1 }],
     ['a fractional price', { priceCents: 1.5 }],
     ['an unknown status', { status: 'stolen' }],
+    ['an unknown category', { category: 'spaceship' }],
+    ['a negative quantity', { quantity: -1 }],
     ['a malformed VIN', { vin: 'SHORT' }],
     ['a blank make', { make: ' ' }],
   ])('rejects %s with 400', async (_label, body) => {
