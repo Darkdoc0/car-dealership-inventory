@@ -35,3 +35,15 @@ export async function createUserToken(app: Express, role: 'user' | 'admin') {
 }
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+/**
+ * Makes every pool query whose SQL contains `fragment` reject, while all other queries run normally.
+ * Restore with jest.restoreAllMocks().
+ */
+export function failQueriesMatching(fragment: string) {
+  const realQuery = pool.query.bind(pool) as (...args: unknown[]) => Promise<unknown>;
+  return jest.spyOn(pool, 'query').mockImplementation(((sql: unknown, ...rest: unknown[]) =>
+    typeof sql === 'string' && sql.includes(fragment)
+      ? Promise.reject(new Error('connection to 10.0.0.5 refused'))
+      : realQuery(sql, ...rest)) as never);
+}

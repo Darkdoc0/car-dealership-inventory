@@ -20,6 +20,15 @@ describe('error handling', () => {
     expect(res.body).toEqual({ error: expect.any(String) });
   });
 
+  it('returns a JSON 413 when the request body is too large', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'big@example.com', password: 'x'.repeat(200_000) });
+
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ error: 'Invalid request' });
+  });
+
   it('returns a generic JSON 500 without leaking internals when the database fails', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     jest.spyOn(pool, 'query').mockImplementation(() => Promise.reject(new Error('connection to 10.0.0.5 refused')));

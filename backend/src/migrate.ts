@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(__dirname, '../migrations');
 // Arbitrary constant: serializes concurrent migrators (e.g. two server instances booting).
-const MIGRATION_LOCK_ID = 727274;
+export const MIGRATION_LOCK_ID = 727274;
 
 export async function migrate(pool: Pool, dir: string = DEFAULT_MIGRATIONS_DIR): Promise<void> {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
