@@ -1,5 +1,6 @@
 import express from 'express';
 import { errorHandler } from './errorHandler';
+import { loginRateLimit } from './loginRateLimit';
 import { authRouter } from './routes/auth';
 
 export interface AppOptions {
@@ -7,9 +8,10 @@ export interface AppOptions {
   loginMaxAttempts?: number;
 }
 
-export function createApp(_options: AppOptions = {}) {
+export function createApp(options: AppOptions = {}) {
   const app = express();
   app.use(express.json());
+  app.post('/api/auth/login', loginRateLimit(options.loginMaxAttempts));
   app.use('/api/auth', authRouter);
   app.use(errorHandler);
   return app;
