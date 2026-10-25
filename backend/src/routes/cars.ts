@@ -179,3 +179,16 @@ carsRouter.patch('/:id', requireRole('admin'), async (req, res, next) => {
     return next(err);
   }
 });
+
+carsRouter.delete('/:id', requireRole('admin'), async (req, res, next) => {
+  const id = parseId(String(req.params.id));
+  if (id === null) return res.status(404).json(notFound);
+
+  try {
+    const { rowCount } = await pool.query('DELETE FROM cars WHERE id = $1', [id]);
+    if (!rowCount) return res.status(404).json(notFound);
+    return res.status(204).end();
+  } catch (err) {
+    return next(err);
+  }
+});
