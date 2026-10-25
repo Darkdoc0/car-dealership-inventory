@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { pool } from '../db';
 
 const UNIQUE_VIOLATION = '23505';
+// bcrypt only hashes the first 72 bytes, so longer passwords would silently collide.
+const BCRYPT_MAX_BYTES = 72;
 
 const registerSchema = z.object({
   email: z.string().trim().email(),
-  password: z.string().min(8),
+  password: z.string().min(8).refine((p) => Buffer.byteLength(p, 'utf8') <= BCRYPT_MAX_BYTES),
 });
 
 export const authRouter = Router();
@@ -15,7 +17,7 @@ export const authRouter = Router();
 authRouter.post('/register', async (req, res, next) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: 'A valid email and a password of at least 8 characters are required' });
+    return res.status(400).json({ error: 'A valid email and a password of 8 to 72 bytes are required' });
   }
   const { email, password } = parsed.data;
 
