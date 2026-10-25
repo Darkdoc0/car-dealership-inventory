@@ -42,6 +42,24 @@ describe('POST /api/auth/register', () => {
     expect(res.status).toBe(400);
   });
 
+  it('accepts a password of exactly 72 bytes', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: uniqueEmail(), password: 'a'.repeat(72) });
+
+    expect(res.status).toBe(201);
+  });
+
+  it('rejects a password longer than 72 bytes with 400', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: uniqueEmail(), password: 'a'.repeat(73) });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('counts bytes, not characters, for the 72-byte limit', async () => {
+    const res = await request(app).post('/api/auth/register').send({ email: uniqueEmail(), password: 'é'.repeat(37) });
+
+    expect(res.status).toBe(400);
+  });
+
   it('rejects a missing body with 400', async () => {
     const res = await request(app).post('/api/auth/register').send({});
 
