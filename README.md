@@ -13,14 +13,32 @@ admins add, edit, restock and delete vehicles.
 
 ## Screenshots
 
-Placeholders — capture each screen and save it under `docs/screenshots/` with the name shown, then replace the placeholder text with an image link such as `![Sign in](docs/screenshots/sign-in.png)`.
+Captured from the running app with the demo data (`npm run seed`) by `cd e2e && npm run screenshots`.
 
-| Screen | Save as |
-|--------|---------|
-| _[screenshot: sign-in page]_ | `docs/screenshots/sign-in.png` |
-| _[screenshot: vehicle list with search, filters and a sold-out vehicle]_ | `docs/screenshots/shop.png` |
-| _[screenshot: admin vehicle table with Edit, Restock and Delete]_ | `docs/screenshots/admin-list.png` |
-| _[screenshot: add-vehicle form showing validation errors]_ | `docs/screenshots/admin-form.png` |
+**Sign in**
+
+![Sign in](docs/screenshots/sign-in.png)
+
+**Shopper: vehicle list.** Search and filters, paging, and the Purchase button disabled for sold-out (and reserved) vehicles.
+
+![Vehicle list](docs/screenshots/shop.png)
+
+**Shopper: search by category and price range**
+
+![Search results](docs/screenshots/shop-search.png)
+
+**On a phone** (390 px wide)
+
+![Phone layout](docs/screenshots/shop-mobile.png)
+
+**Admin: vehicle table** with Edit, Restock and Delete
+
+![Admin vehicle table](docs/screenshots/admin-list.png)
+
+**Admin: add-vehicle form** showing validation errors
+
+![Add vehicle form](docs/screenshots/admin-form.png)
+
 
 ## Features
 
