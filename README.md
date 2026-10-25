@@ -1,5 +1,7 @@
 # Car Dealership Inventory System
 
+[![CI](https://github.com/Darkdoc0/car-dealership-inventory/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Darkdoc0/car-dealership-inventory/actions/workflows/ci.yml)
+
 A full-stack inventory app for a car dealership, built as a TDD kata. Shoppers sign up, search the stock and buy a vehicle;
 admins add, edit, restock and delete vehicles.
 
