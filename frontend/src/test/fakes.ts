@@ -23,7 +23,8 @@ export function createFakeApi(): FakeApi {
     register: vi.fn<ApiClient['register']>(),
     login: vi.fn<ApiClient['login']>(),
     me: vi.fn<ApiClient['me']>(),
-    listCars: vi.fn<ApiClient['listCars']>(),
+    // Screens that list cars get an empty page unless a test says otherwise.
+    listCars: vi.fn<ApiClient['listCars']>().mockResolvedValue({ items: [], total: 0, limit: 12, offset: 0 }),
     getCar: vi.fn<ApiClient['getCar']>(),
     createCar: vi.fn<ApiClient['createCar']>(),
     updateCar: vi.fn<ApiClient['updateCar']>(),

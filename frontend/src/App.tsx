@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
+import { ApiProvider } from './api/ApiContext';
 import { AuthProvider } from './auth/AuthContext';
 import type { Session } from './auth/session';
 import AppLayout from './components/AppLayout';
@@ -11,19 +12,21 @@ import RegisterPage from './pages/RegisterPage';
 /** The application routes. The router itself (browser or in-memory) is supplied by the caller. */
 export default function App({ session }: { session: Session }) {
   return (
-    <AuthProvider session={session}>
-      <Routes>
-        <Route element={<GuestOnly />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
-        <Route element={<RequireAuth />}>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
+    <ApiProvider api={session.api}>
+      <AuthProvider session={session}>
+        <Routes>
+          <Route element={<GuestOnly />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
           </Route>
-        </Route>
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </AuthProvider>
+          <Route element={<RequireAuth />}>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<DashboardPage />} />
+            </Route>
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </AuthProvider>
+    </ApiProvider>
   );
 }
