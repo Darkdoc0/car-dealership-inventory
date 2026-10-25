@@ -63,7 +63,7 @@ export function makeCar(overrides: Partial<Car> = {}): Car {
   const id = overrides.id ?? nextCarId++;
   return {
     id,
-    vin: ,
+    vin: `TST${String(id).padStart(14, '0')}`,
     make: 'Toyota',
     model: 'Corolla',
     year: 2021,
