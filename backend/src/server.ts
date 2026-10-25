@@ -1,14 +1,11 @@
 import 'dotenv/config';
-import { createApp } from './app';
+import { installShutdownHandlers, startServer } from './bootstrap';
 import { pool } from './db';
-import { getJwtSecret } from './jwt';
-import { migrate } from './migrate';
 
 async function main() {
-  getJwtSecret(); // fail fast if misconfigured
-  await migrate(pool);
-  const port = Number(process.env.PORT ?? 3000);
-  createApp().listen(port, () => console.log(`API listening on :${port}`));
+  const server = await startServer(pool, Number(process.env.PORT ?? 3000));
+  console.log(`API listening on :${server.port}`);
+  installShutdownHandlers(server, () => pool.end(), process, console.log);
 }
 
 main().catch((err) => {
