@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import App from '../App';
 import { ApiError } from '../api/errors';
 import type { Car } from '../api/types';
@@ -29,6 +29,11 @@ async function fillValidForm() {
 }
 
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Save vehicle' }));
+
+function GoTo({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(to)}>go to {to}</button>;
+}
 
 describe('Add vehicle page', () => {
   it('shows every field, with sensible defaults for quantity and status', async () => {
@@ -96,6 +101,15 @@ describe('Add vehicle page', () => {
     expect(session.api.createCar).toHaveBeenCalledTimes(1);
   });
 
+  it('moves focus to the first invalid field after a failed save', async () => {
+    renderAt('/admin/cars/new');
+    await screen.findByRole('heading', { name: 'Add vehicle' });
+
+    await save();
+
+    await waitFor(() => expect(screen.getByLabelText('VIN')).toHaveFocus());
+  });
+
   it('shows the server message and stays on the form when the VIN already exists', async () => {
     const session = createFakeSession({ token: 't', user: admin });
     session.api.createCar.mockRejectedValue(new ApiError(409, 'A car with this VIN already exists'));
@@ -152,6 +166,25 @@ describe('Edit vehicle page', () => {
     expect(screen.getByLabelText('Category')).toHaveValue('sedan');
     expect(screen.getByText('3 in stock')).toBeInTheDocument();
     expect(screen.queryByLabelText('Quantity')).not.toBeInTheDocument();
+  });
+
+  it('shows the other vehicle, not the old one, when the id in the address changes', async () => {
+    const session = createFakeSession({ token: 't', user: admin });
+    const civic = saved({ id: 8, vin: 'TST88888888888888', make: 'Honda', model: 'Civic', year: 2022 });
+    session.api.getCar.mockImplementation(async (id) => (id === 8 ? civic : saved()));
+    render(
+      <MemoryRouter initialEntries={['/admin/cars/7/edit']}>
+        <GoTo to="/admin/cars/8/edit" />
+        <App session={session} />
+      </MemoryRouter>,
+    );
+    await screen.findByRole('heading', { name: 'Edit 2021 Toyota Corolla' });
+
+    await userEvent.click(screen.getByRole('button', { name: /go to/ }));
+
+    expect(await screen.findByRole('heading', { name: 'Edit 2022 Honda Civic' })).toBeInTheDocument();
+    expect(screen.getByLabelText('VIN')).toHaveValue('TST88888888888888');
+    expect(session.api.getCar).toHaveBeenCalledWith(8);
   });
 
   it('shows a loading message while the vehicle is fetched', async () => {
