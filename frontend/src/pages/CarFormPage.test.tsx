@@ -72,6 +72,21 @@ describe('Add vehicle page', () => {
     });
   });
 
+  it('creates the vehicle with the starting quantity that was typed', async () => {
+    const session = createFakeSession({ token: 't', user: admin });
+    session.api.createCar.mockResolvedValue(saved());
+    renderAt('/admin/cars/new', session);
+    await screen.findByRole('heading', { name: 'Add vehicle' });
+    await fillValidForm();
+
+    await userEvent.clear(screen.getByLabelText('Quantity'));
+    await userEvent.type(screen.getByLabelText('Quantity'), '4');
+    await save();
+
+    await screen.findByRole('heading', { name: 'Manage vehicles' });
+    expect(session.api.createCar).toHaveBeenCalledWith(expect.objectContaining({ quantity: 4 }));
+  });
+
   it('shows every problem next to its field and does not call the API', async () => {
     const session = renderAt('/admin/cars/new');
     await screen.findByRole('heading', { name: 'Add vehicle' });
@@ -209,6 +224,19 @@ describe('Edit vehicle page', () => {
     expect(await screen.findByRole('heading', { name: 'Manage vehicles' })).toBeInTheDocument();
     expect(session.api.updateCar).toHaveBeenCalledWith(7, { priceCents: 1700000 });
     expect(await screen.findByText('Saved 2021 Toyota Corolla')).toBeInTheDocument();
+  });
+
+  it('sends a changed status', async () => {
+    const session = sessionWithCar();
+    session.api.updateCar.mockResolvedValue(saved({ status: 'reserved' }));
+    renderAt('/admin/cars/7/edit', session);
+    await screen.findByRole('heading', { name: 'Edit 2021 Toyota Corolla' });
+
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'reserved');
+    await save();
+
+    expect(await screen.findByRole('heading', { name: 'Manage vehicles' })).toBeInTheDocument();
+    expect(session.api.updateCar).toHaveBeenCalledWith(7, { status: 'reserved' });
   });
 
   it('names the vehicle by its saved values in the confirmation', async () => {

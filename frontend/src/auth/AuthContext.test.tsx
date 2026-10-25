@@ -82,6 +82,20 @@ describe('AuthProvider', () => {
     expect(currentUser()).toBe('member@example.com:user');
   });
 
+  it('forgets the token and stays anonymous when the user cannot be loaded right after login', async () => {
+    const session = createFakeSession();
+    session.api.login.mockResolvedValue({ token: 'jwt-new', user: { id: member.id, email: member.email } });
+    session.api.me.mockRejectedValue(new ApiError(500, 'Internal server error'));
+    renderProbe(session);
+    await waitFor(() => expect(status()).toBe('anonymous'));
+
+    await userEvent.click(screen.getByText('login'));
+
+    await waitFor(() => expect(session.api.me).toHaveBeenCalled());
+    expect(session.store.get()).toBeNull();
+    expect(status()).toBe('anonymous');
+  });
+
   it('stays anonymous and stores nothing when login fails', async () => {
     const session = createFakeSession();
     session.api.login.mockRejectedValue(new ApiError(401, 'Invalid email or password'));
