@@ -27,15 +27,17 @@ const carFields = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-HJ-NPR-Z0-9]{17}$/),
+    .regex(/^[A-HJ-NPR-Z0-9]{17}$/)
+    .nullable(),
   make: nonBlank,
   model: nonBlank,
   year: z
     .number()
     .int()
     .min(1886)
-    .refine((y) => y <= new Date().getFullYear() + 1),
-  mileage: z.number().int().min(0).max(10_000_000),
+    .refine((y) => y <= new Date().getFullYear() + 1)
+    .nullable(),
+  mileage: z.number().int().min(0).max(10_000_000).nullable(),
   category: z.enum(CAR_CATEGORIES),
   quantity: z.number().int().min(0).max(MAX_QUANTITY),
   status: z.enum(CAR_STATUSES),
@@ -59,6 +61,10 @@ function settlePrice<T extends WithPrice>({ price, ...rest }: T, ctx: z.core.$Re
 
 export const carInputSchema = carFields
   .extend({
+    // vin, year and mileage are optional (null clears them on update; here, leaving them out stores null).
+    vin: carFields.shape.vin.optional(),
+    year: carFields.shape.year.optional(),
+    mileage: carFields.shape.mileage.optional(),
     quantity: carFields.shape.quantity.default(1),
     status: carFields.shape.status.default('available'),
   })

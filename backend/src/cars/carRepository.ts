@@ -4,11 +4,11 @@ import { MAX_QUANTITY, type CarCategory, type CarInput, type CarListQuery, type 
 
 export interface Car {
   id: number;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
-  year: number;
-  mileage: number;
+  year: number | null;
+  mileage: number | null;
   /** Dollars, derived from priceCents. */
   price: number;
   priceCents: number;
@@ -83,7 +83,7 @@ export function createCarRepository(pool: Pool): CarRepository {
         const { rows } = await pool.query(
           `INSERT INTO cars (vin, make, model, year, mileage, price_cents, category, quantity, status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${CAR_COLUMNS}`,
-          [c.vin, c.make, c.model, c.year, c.mileage, c.priceCents, c.category, c.quantity, c.status],
+          [c.vin ?? null, c.make, c.model, c.year ?? null, c.mileage ?? null, c.priceCents, c.category, c.quantity, c.status],
         );
         return { kind: 'ok', car: rows[0] };
       } catch (err) {
