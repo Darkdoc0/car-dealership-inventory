@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import { createCarRepository, type CarRepository } from './cars/carRepository';
 import { pool } from './db';
 import { errorHandler } from './errorHandler';
@@ -30,6 +31,8 @@ export function createApp(options: AppOptions = {}) {
   const requireAuth = createRequireAuth(users);
 
   const app = express();
+  // First, so every response (including errors and 404s) carries the security headers and not X-Powered-By.
+  app.use(helmet());
   app.use(express.json());
   app.post('/api/auth/login', loginRateLimit(options.loginMaxAttempts));
   app.use('/api/auth', createAuthRouter(users, hasher, requireAuth));
