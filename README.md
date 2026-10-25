@@ -7,7 +7,7 @@ admins add, edit, restock and delete vehicles.
 
 - **Backend:** Node.js, TypeScript, Express 5, PostgreSQL 16, JWT authentication
 - **Frontend:** React 19, TypeScript, Tailwind CSS 4, Vite
-- **Tests:** Jest (backend), Vitest + Testing Library (frontend), Playwright (end to end) — 465 tests, all passing
+- **Tests:** Jest (backend), Vitest + Testing Library (frontend), Playwright (end to end) — 527 tests, all passing
 
 > **Status:** feature-complete for the kata brief. Known limitations are listed [below](#known-limitations).
 
@@ -130,15 +130,18 @@ All endpoints are under `/api`. Errors are `{ "error": "message" }`. Endpoints m
 | `POST /auth/login` | anyone | → `{ token, user }`. Same `401` for an unknown email and a wrong password; 10 failed attempts per IP per 15 minutes, then `429` |
 | `GET /auth/me` 🔒 | any user | `{ id, email, role }` |
 | `GET /admin/users` 🔒 | admin | All users (`403` for others) |
-| `GET /cars` 🔒 | any user | Filters `make`, `model`, `category`, `status`, `minYear`, `maxYear`, `minPrice`, `maxPrice` (cents), `limit` (1–100, default 20), `offset`. Newest first. → `{ items, total, limit, offset }` |
-| `GET /cars/:id` 🔒 | any user | One vehicle, or `404` |
-| `POST /cars` 🔒 | admin | Create. `409` if the VIN exists |
-| `PATCH /cars/:id` 🔒 | admin | Change any subset of fields |
-| `DELETE /cars/:id` 🔒 | admin | `204` |
-| `POST /cars/:id/purchase` 🔒 | any user | Optional `{ quantity }` (default 1). One atomic statement checks stock and decrements it, so concurrent buyers cannot oversell. Buying the last unit marks the car `sold`. `409` if there is not enough stock or the car is not `available` |
-| `POST /cars/:id/restock` 🔒 | admin | `{ quantity }` (1–1,000,000). A `sold` car becomes `available`. `409` past 1,000,000 units |
+| `GET /vehicles` 🔒 | any user | Filters `make`, `model`, `category`, `status`, `minYear`, `maxYear`, `minPrice`, `maxPrice` (dollars, e.g. `19999.99`), `limit` (1–100, default 20), `offset`. Newest first. → `{ items, total, limit, offset }` |
+| `GET /vehicles/search` 🔒 | any user | The same filters as the list (search by make, model, category or price range); returns the same paged shape, not a bare array |
+| `GET /vehicles/:id` 🔒 | any user | One vehicle, or `404` |
+| `POST /vehicles` 🔒 | admin | Create. Needs only `make`, `model`, `category` and `price`. `409` if the VIN exists |
+| `PUT /vehicles/:id` 🔒 | admin | Change any subset of fields (a partial update, not a full replace); `null` clears `vin`, `year` or `mileage`. `PATCH` does the same |
+| `DELETE /vehicles/:id` 🔒 | admin | `204` |
+| `POST /vehicles/:id/purchase` 🔒 | any user | Optional `{ quantity }` (default 1). One atomic statement checks stock and decrements it, so concurrent buyers cannot oversell. Buying the last unit marks the car `sold`. `409` if there is not enough stock or the car is not `available` |
+| `POST /vehicles/:id/restock` 🔒 | admin | `{ quantity }` (1–1,000,000). A `sold` car becomes `available`. `409` past 1,000,000 units |
 
-**Vehicle fields:** `vin` (17 characters, letters and digits except I, O and Q, stored upper-case), `make`, `model`, `year` (1886 to next year), `mileage` (0 to 10,000,000), `priceCents` (whole cents, up to 2,000,000,000), `category` (`sedan`, `suv`, `truck`, `hatchback`, `coupe`, `convertible`, `van`), `quantity` (0 to 1,000,000), `status` (`available`, `reserved`, `sold`).
+**Vehicle fields:** `make`, `model`, `price` (dollars, at most two decimals, up to 20,000,000; `priceCents` is the same amount in whole cents and is accepted and returned too, and must agree if both are sent), `category` (`sedan`, `suv`, `truck`, `hatchback`, `coupe`, `convertible`, `van`), `quantity` (0 to 1,000,000; default 1), `status` (`available`, `reserved`, `sold`; default `available`), and the optional `vin` (17 characters, letters and digits except I, O and Q, stored upper-case; unique when present), `year` (1886 to next year) and `mileage` (0 to 10,000,000), which are `null` when not set.
+
+The original path `/api/cars` still works and serves exactly the same routes as `/api/vehicles` (an alias kept for existing callers).
 
 ## Project structure
 
@@ -164,7 +167,7 @@ PROMPTS.md  raw AI chat log (see "My AI Usage")
 Design choices worth knowing:
 
 - **Layering and dependency injection.** Routes depend on repository interfaces, and `createApp({ dependencies })` accepts fakes, so the HTTP layer is tested with no database. The frontend does the same with an `ApiClient` interface.
-- **Money is whole cents everywhere** (never floats); the UI converts to and from dollars.
+- **Money is whole cents internally** (never floats). The API takes and returns `price` in dollars (checked to at most two decimals) beside `priceCents`.
 - **The server is the authority.** The frontend validates with the same rules for fast feedback, but every rule is enforced again by the API and, for the important ones, by database `CHECK` constraints.
 - **No oversell.** Stock changes are single conditional `UPDATE`s, proven by a 10-way concurrency test and a two-browser end-to-end test.
 - **Stock is not editable in the edit form.** It changes only through restock and purchase, so an admin saving a stale form cannot overwrite sales made in the meantime.
@@ -172,9 +175,9 @@ Design choices worth knowing:
 ## Testing
 
 ```bash
-cd backend  && npm test                  # 248 tests; add :coverage for the coverage table
-cd frontend && npm test                  # 195 tests; add :coverage for the coverage table
-cd e2e      && npm install && npm test   # 22 browser tests, about 45 seconds
+cd backend  && npm test                  # 303 tests; add :coverage for the coverage table
+cd frontend && npm test                  # 201 tests; add :coverage for the coverage table
+cd e2e      && npm install && npm test   # 23 browser tests, about 45 seconds
 cd e2e      && npm run report            # open the HTML report (traces and screenshots of failures)
 ```
 
