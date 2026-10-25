@@ -1,6 +1,6 @@
-import bcrypt from 'bcryptjs';
 import type { Pool } from 'pg';
-import { BCRYPT_COST, registerSchema } from './credentials';
+import { registerSchema } from './credentials';
+import { createBcryptHasher, type PasswordHasher } from './passwordHasher';
 
 export interface AdminCredentials {
   email: string;
@@ -15,7 +15,11 @@ export function readAdminCredentials(env: NodeJS.ProcessEnv): AdminCredentials {
 }
 
 /** Creates the admin user, or promotes the existing user with that email and resets its password. */
-export async function seedAdmin(pool: Pool, credentials: AdminCredentials): Promise<{ id: number; email: string }> {
+export async function seedAdmin(
+  pool: Pool,
+  credentials: AdminCredentials,
+  hasher: PasswordHasher = createBcryptHasher(),
+): Promise<{ id: number; email: string }> {
   const parsed = registerSchema.safeParse(credentials);
   if (!parsed.success) {
     const fields = [...new Set(parsed.error.issues.map((i) => String(i.path[0])))].join(' and ');
@@ -23,7 +27,7 @@ export async function seedAdmin(pool: Pool, credentials: AdminCredentials): Prom
   }
   const { email, password } = parsed.data;
 
-  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  const passwordHash = await hasher.hash(password);
   const { rows } = await pool.query(
     `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')
      ON CONFLICT ((lower(email))) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin'

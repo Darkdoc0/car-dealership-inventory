@@ -4,6 +4,7 @@ import { pool } from './db';
 import { errorHandler } from './errorHandler';
 import { loginRateLimit } from './loginRateLimit';
 import { createRequireAuth } from './middleware/requireAuth';
+import { createBcryptHasher, type PasswordHasher } from './passwordHasher';
 import { createAdminRouter } from './routes/admin';
 import { createAuthRouter } from './routes/auth';
 import { createCarsRouter } from './routes/cars';
@@ -12,6 +13,7 @@ import { createUserRepository, type UserRepository } from './users/userRepositor
 export interface AppDependencies {
   users: UserRepository;
   cars: CarRepository;
+  hasher: PasswordHasher;
 }
 
 export interface AppOptions {
@@ -24,12 +26,13 @@ export interface AppOptions {
 export function createApp(options: AppOptions = {}) {
   const users = options.dependencies?.users ?? createUserRepository(pool);
   const cars = options.dependencies?.cars ?? createCarRepository(pool);
+  const hasher = options.dependencies?.hasher ?? createBcryptHasher();
   const requireAuth = createRequireAuth(users);
 
   const app = express();
   app.use(express.json());
   app.post('/api/auth/login', loginRateLimit(options.loginMaxAttempts));
-  app.use('/api/auth', createAuthRouter(users, requireAuth));
+  app.use('/api/auth', createAuthRouter(users, hasher, requireAuth));
   app.use('/api/admin', createAdminRouter(users, requireAuth));
   app.use('/api/cars', createCarsRouter(cars, requireAuth));
   app.use(errorHandler);

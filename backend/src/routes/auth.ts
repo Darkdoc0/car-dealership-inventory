@@ -1,8 +1,8 @@
 import { Router, type RequestHandler } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { BCRYPT_COST, registerSchema, withinBcryptLimit } from '../credentials';
+import { registerSchema, withinBcryptLimit } from '../credentials';
 import { signToken } from '../jwt';
+import type { PasswordHasher } from '../passwordHasher';
 import type { UserRepository } from '../users/userRepository';
 
 const loginSchema = z.object({
@@ -10,10 +10,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-// Compared against when the email is unknown, so response time does not reveal which emails exist.
-const DUMMY_HASH = bcrypt.hashSync('timing-equalizer', BCRYPT_COST);
-
-export function createAuthRouter(users: UserRepository, requireAuth: RequestHandler) {
+export function createAuthRouter(users: UserRepository, hasher: PasswordHasher, requireAuth: RequestHandler) {
   const router = Router();
 
   router.post('/register', async (req, res) => {
@@ -23,7 +20,7 @@ export function createAuthRouter(users: UserRepository, requireAuth: RequestHand
     }
     const { email, password } = parsed.data;
 
-    const result = await users.create(email, await bcrypt.hash(password, BCRYPT_COST));
+    const result = await users.create(email, await hasher.hash(password));
     if (result.kind === 'duplicate_email') return res.status(409).json({ error: 'Email already registered' });
     return res.status(201).json(result.user);
   });
@@ -40,7 +37,7 @@ export function createAuthRouter(users: UserRepository, requireAuth: RequestHand
     }
 
     const user = await users.findCredentialsByEmail(email);
-    const passwordMatches = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+    const passwordMatches = await hasher.verify(password, user?.passwordHash ?? null);
     if (!user || !passwordMatches) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
