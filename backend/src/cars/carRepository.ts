@@ -17,10 +17,10 @@ export interface Car {
   updatedAt: Date;
 }
 
-export type CreateResult = { kind: 'ok'; car: Car } | { kind: 'duplicate_vin' };
-export type WriteResult = { kind: 'ok'; car: Car } | { kind: 'not_found' } | { kind: 'duplicate_vin' };
+type CreateResult = { kind: 'ok'; car: Car } | { kind: 'duplicate_vin' };
+type WriteResult = { kind: 'ok'; car: Car } | { kind: 'not_found' } | { kind: 'duplicate_vin' };
 /** `conflict` means the car exists but the stock rule refused the change. */
-export type StockResult = { kind: 'ok'; car: Car } | { kind: 'not_found' } | { kind: 'conflict' };
+type StockResult = { kind: 'ok'; car: Car } | { kind: 'not_found' } | { kind: 'conflict' };
 
 /** Persistence port for cars. Routes depend on this interface, not on SQL. */
 export interface CarRepository {

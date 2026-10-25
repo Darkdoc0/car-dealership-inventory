@@ -5,7 +5,7 @@ import { pool } from '../src/db';
 let counter = 0;
 
 /** A syntactically valid, unique 17-character VIN (no I, O or Q). */
-export function uniqueVin(): string {
+function uniqueVin(): string {
   const stamp = String(Date.now() % 1e10).padStart(10, '0');
   return `TST${stamp}${String(counter++ % 1e4).padStart(4, '0')}`;
 }

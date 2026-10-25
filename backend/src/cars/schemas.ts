@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
+const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
 export const CAR_CATEGORIES = ['sedan', 'suv', 'truck', 'hatchback', 'coupe', 'convertible', 'van'] as const;
 export const MAX_QUANTITY = 1_000_000;
 
