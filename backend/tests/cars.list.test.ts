@@ -17,13 +17,13 @@ afterAll(() => pool.end());
 // The database is shared across test files, so every test scopes itself with a unique make.
 const uniqueMake = () => `Make${Date.now()}x${n++}`;
 const createCar = async (overrides: Record<string, unknown>) =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload(overrides))).body;
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload(overrides))).body;
 const list = (query: Record<string, string | number> = {}, token = userToken) =>
-  request(app).get('/api/cars').query(query).set(bearer(token));
+  request(app).get('/api/vehicles').query(query).set(bearer(token));
 
-describe('GET /api/cars', () => {
+describe('GET /api/vehicles', () => {
   it('rejects a request without a token with 401', async () => {
-    const res = await request(app).get('/api/cars');
+    const res = await request(app).get('/api/vehicles');
 
     expect(res.status).toBe(401);
   });

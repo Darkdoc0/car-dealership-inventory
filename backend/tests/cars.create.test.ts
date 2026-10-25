@@ -13,11 +13,11 @@ beforeAll(async () => {
 });
 afterAll(() => pool.end());
 
-const create = (body: object, token = adminToken) => request(app).post('/api/cars').set(bearer(token)).send(body);
+const create = (body: object, token = adminToken) => request(app).post('/api/vehicles').set(bearer(token)).send(body);
 
-describe('POST /api/cars', () => {
+describe('POST /api/vehicles', () => {
   it('rejects a request without a token with 401', async () => {
-    const res = await request(app).post('/api/cars').send(carPayload());
+    const res = await request(app).post('/api/vehicles').send(carPayload());
 
     expect(res.status).toBe(401);
   });

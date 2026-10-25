@@ -14,19 +14,19 @@ beforeAll(async () => {
 afterAll(() => pool.end());
 
 const createCar = async (overrides = {}) =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload(overrides))).body;
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload(overrides))).body;
 const purchase = (id: number | string, body?: object, token = userToken) => {
-  const req = request(app).post(`/api/cars/${id}/purchase`).set(bearer(token));
+  const req = request(app).post(`/api/vehicles/${id}/purchase`).set(bearer(token));
   return body ? req.send(body) : req;
 };
-const getCar = async (id: number) => (await request(app).get(`/api/cars/${id}`).set(bearer(userToken))).body;
+const getCar = async (id: number) => (await request(app).get(`/api/vehicles/${id}`).set(bearer(userToken))).body;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe('POST /api/cars/:id/purchase', () => {
+describe('POST /api/vehicles/:id/purchase', () => {
   it('rejects a request without a token with 401', async () => {
     const car = await createCar();
 
-    const res = await request(app).post(`/api/cars/${car.id}/purchase`);
+    const res = await request(app).post(`/api/vehicles/${car.id}/purchase`);
 
     expect(res.status).toBe(401);
   });

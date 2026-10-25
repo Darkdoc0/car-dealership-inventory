@@ -48,7 +48,7 @@ describe('error handling', () => {
         ? Promise.reject(new Error('connection to 10.0.0.5 refused'))
         : realQuery(sql, ...rest)) as never);
 
-    const res = await request(app).get('/api/cars').set(bearer(token));
+    const res = await request(app).get('/api/vehicles').set(bearer(token));
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'Internal server error' });
