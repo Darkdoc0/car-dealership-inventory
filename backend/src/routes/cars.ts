@@ -52,3 +52,27 @@ carsRouter.post('/', requireRole('admin'), async (req, res, next) => {
     return next(err);
   }
 });
+
+const MAX_INT4 = 2_147_483_647;
+
+/** Parses a positive int4 id from a path segment; null when malformed or out of range. */
+export function parseId(raw: string): number | null {
+  if (!/^[1-9]\d{0,9}$/.test(raw)) return null;
+  const id = Number(raw);
+  return id <= MAX_INT4 ? id : null;
+}
+
+const notFound = { error: 'Car not found' };
+
+carsRouter.get('/:id', async (req, res, next) => {
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(404).json(notFound);
+
+  try {
+    const { rows } = await pool.query(`SELECT ${CAR_COLUMNS} FROM cars WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json(notFound);
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    return next(err);
+  }
+});
