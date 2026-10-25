@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import type { ZodError } from 'zod';
 import type { CarRepository } from '../cars/carRepository';
 import {
@@ -9,7 +9,6 @@ import {
   purchaseSchema,
   restockSchema,
 } from '../cars/schemas';
-import { requireAuth } from '../middleware/requireAuth';
 import { requireRole } from '../middleware/requireRole';
 
 const NOT_FOUND = { error: 'Car not found' };
@@ -19,7 +18,7 @@ const invalidFields = (prefix: string, error: ZodError) =>
   ({ error: `${prefix}: ${error.issues.map((i) => i.path.join('.') || 'body').join(', ')}` });
 
 /** HTTP layer for /api/cars: parses and validates input, delegates to the repository, maps results to status codes. */
-export function createCarsRouter(cars: CarRepository) {
+export function createCarsRouter(cars: CarRepository, requireAuth: RequestHandler) {
   const router = Router();
   router.use(requireAuth);
 

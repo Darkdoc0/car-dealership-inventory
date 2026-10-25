@@ -1,17 +1,14 @@
-import { Router } from 'express';
-import { pool } from '../db';
-import { requireAuth } from '../middleware/requireAuth';
+import { Router, type RequestHandler } from 'express';
 import { requireRole } from '../middleware/requireRole';
+import type { UserRepository } from '../users/userRepository';
 
-export const adminRouter = Router();
+export function createAdminRouter(users: UserRepository, requireAuth: RequestHandler) {
+  const router = Router();
+  router.use(requireAuth, requireRole('admin'));
 
-adminRouter.use(requireAuth, requireRole('admin'));
+  router.get('/users', async (_req, res) => {
+    return res.status(200).json(await users.list());
+  });
 
-adminRouter.get('/users', async (_req, res, next) => {
-  try {
-    const { rows } = await pool.query('SELECT id, email, role FROM users ORDER BY id');
-    return res.status(200).json(rows);
-  } catch (err) {
-    return next(err);
-  }
-});
+  return router;
+}

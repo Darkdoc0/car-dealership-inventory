@@ -1,19 +1,11 @@
 import type { RequestHandler } from 'express';
-import { pool } from '../db';
 import { verifyToken } from '../jwt';
-
-export type Role = 'user' | 'admin';
-
-export interface AuthUser {
-  id: number;
-  email: string;
-  role: Role;
-}
+import type { User, UserRepository } from '../users/userRepository';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthUser;
+      user?: User;
     }
   }
 }
@@ -21,25 +13,23 @@ declare global {
 const BEARER = /^Bearer (\S+)$/i;
 
 /** Requires a valid Bearer JWT for a user that still exists; sets req.user. */
-export const requireAuth: RequestHandler = async (req, res, next) => {
-  const unauthorized = () => res.status(401).json({ error: 'Authentication required' });
+export function createRequireAuth(users: UserRepository): RequestHandler {
+  return async (req, res, next) => {
+    const unauthorized = () => res.status(401).json({ error: 'Authentication required' });
 
-  const token = BEARER.exec(req.headers.authorization ?? '')?.[1];
-  if (!token) return unauthorized();
+    const token = BEARER.exec(req.headers.authorization ?? '')?.[1];
+    if (!token) return unauthorized();
 
-  let userId: number;
-  try {
-    userId = verifyToken(token);
-  } catch {
-    return unauthorized();
-  }
+    let userId: number;
+    try {
+      userId = verifyToken(token);
+    } catch {
+      return unauthorized();
+    }
 
-  try {
-    const { rows } = await pool.query('SELECT id, email, role FROM users WHERE id = $1', [userId]);
-    if (!rows[0]) return unauthorized();
-    req.user = rows[0];
+    const user = await users.findById(userId);
+    if (!user) return unauthorized();
+    req.user = user;
     return next();
-  } catch (err) {
-    return next(err);
-  }
-};
+  };
+}
