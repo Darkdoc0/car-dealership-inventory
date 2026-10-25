@@ -107,6 +107,19 @@ describe('DashboardPage search', () => {
     );
   });
 
+  it('runs the search again when Search is pressed with the same filters, to pick up changes made by others', async () => {
+    const session = createFakeSession({ token: 't', user: member });
+    session.api.listCars.mockResolvedValueOnce(makePage([makeCar({ id: 1, quantity: 3 })]));
+    session.api.listCars.mockResolvedValue(makePage([makeCar({ id: 1, quantity: 1 })]));
+    renderDashboard(session);
+    expect(await screen.findByText('3 in stock')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('1 in stock')).toBeInTheDocument();
+    expect(session.api.listCars).toHaveBeenCalledTimes(2);
+  });
+
   it('offers every category plus an "All categories" choice', async () => {
     const session = createFakeSession({ token: 't', user: member });
     session.api.listCars.mockResolvedValue(makePage([]));
