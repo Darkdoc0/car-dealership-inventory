@@ -126,7 +126,7 @@ describe('api client requests', () => {
 
   it('gets, creates and updates cars with the right verbs and bodies', async () => {
     const { client, fetchMock, lastCall } = setup('t');
-    fetchMock.mockResolvedValue(json(car));
+    fetchMock.mockImplementation(async () => json(car));
 
     await client.getCar(1);
     expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1', 'GET']);
@@ -142,7 +142,7 @@ describe('api client requests', () => {
 
   it('purchases one unit by default and the requested quantity otherwise', async () => {
     const { client, fetchMock, lastCall } = setup('t');
-    fetchMock.mockResolvedValue(json(car));
+    fetchMock.mockImplementation(async () => json(car));
 
     await client.purchaseCar(1);
     expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1/purchase', 'POST']);
@@ -154,7 +154,7 @@ describe('api client requests', () => {
 
   it('restocks with the given quantity', async () => {
     const { client, fetchMock, lastCall } = setup('t');
-    fetchMock.mockResolvedValue(json(car));
+    fetchMock.mockImplementation(async () => json(car));
 
     await client.restockCar(1, 10);
 
@@ -189,6 +189,16 @@ describe('api client errors', () => {
     const error = await client.getCar(1).catch((e) => e);
 
     expect(error).toMatchObject({ status: 502, message: 'Request failed (502)' });
+  });
+
+  it('throws an ApiError when a successful response is not valid JSON', async () => {
+    const { client, fetchMock } = setup('t');
+    fetchMock.mockImplementation(async () => new Response('<html>spa fallback</html>', { status: 200 }));
+
+    const error = await client.getCar(1).catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 200, message: 'The server sent an unexpected response.' });
   });
 
   it('reports an unreachable server as status 0', async () => {
