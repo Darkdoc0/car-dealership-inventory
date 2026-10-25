@@ -73,3 +73,11 @@ export function installShutdownHandlers(
     target.once(signal, () => void shutdown(signal));
   }
 }
+
+/**
+ * Resets the database in DATABASE_URL and fills it with the demo users and vehicles (`npm run seed`).
+ * Refuses to run in production or against a database that looks like one.
+ */
+export async function runDemoSeed(_pool: Pool, _env: NodeJS.ProcessEnv, _log: (message: string) => void): Promise<void> {
+  throw new Error('not implemented');
+}
