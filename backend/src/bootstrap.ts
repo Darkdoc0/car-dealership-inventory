@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'net';
 import type { Pool } from 'pg';
 import { createApp } from './app';
+import { DEMO_ADMIN, DEMO_CARS, DEMO_USER, resetGuardProblem, seedDemoData } from './demoData';
 import { getJwtSecret } from './jwt';
 import { migrate } from './migrate';
 import { readAdminCredentials, seedAdmin } from './seedAdmin';
@@ -78,6 +79,17 @@ export function installShutdownHandlers(
  * Resets the database in DATABASE_URL and fills it with the demo users and vehicles (`npm run seed`).
  * Refuses to run in production or against a database that looks like one.
  */
-export async function runDemoSeed(_pool: Pool, _env: NodeJS.ProcessEnv, _log: (message: string) => void): Promise<void> {
-  throw new Error('not implemented');
+export async function runDemoSeed(pool: Pool, env: NodeJS.ProcessEnv, log: (message: string) => void): Promise<void> {
+  const { rows } = await pool.query<{ name: string }>('SELECT current_database() AS name');
+  const databaseName = rows[0].name;
+  const problem = resetGuardProblem(env.NODE_ENV, databaseName);
+  if (problem) throw new Error(problem);
+
+  log(`Resetting database "${databaseName}" and loading the demo data...`);
+  await seedDemoData(pool);
+
+  const soldOut = DEMO_CARS.filter((car) => car.quantity === 0).length;
+  log(`Demo data ready: 2 users and ${DEMO_CARS.length} vehicles (${soldOut} out of stock).`);
+  log(`  admin    ${DEMO_ADMIN.email} / ${DEMO_ADMIN.password}`);
+  log(`  shopper  ${DEMO_USER.email} / ${DEMO_USER.password}`);
 }
