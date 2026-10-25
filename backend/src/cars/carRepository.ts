@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { isUniqueViolation } from '../db';
-import { MAX_QUANTITY, type CarInput, type CarListQuery, type CarUpdate } from './schemas';
+import { MAX_QUANTITY, type CarCategory, type CarInput, type CarListQuery, type CarStatus, type CarUpdate } from './schemas';
 
 export interface Car {
   id: number;
@@ -10,9 +10,9 @@ export interface Car {
   year: number;
   mileage: number;
   priceCents: number;
-  category: string;
+  category: CarCategory;
   quantity: number;
-  status: string;
+  status: CarStatus;
   createdAt: Date;
   updatedAt: Date;
 }

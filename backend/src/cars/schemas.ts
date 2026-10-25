@@ -4,6 +4,9 @@ export const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
 export const CAR_CATEGORIES = ['sedan', 'suv', 'truck', 'hatchback', 'coupe', 'convertible', 'van'] as const;
 export const MAX_QUANTITY = 1_000_000;
 
+export type CarStatus = (typeof CAR_STATUSES)[number];
+export type CarCategory = (typeof CAR_CATEGORIES)[number];
+
 const MAX_INT4 = 2_147_483_647;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 20;
