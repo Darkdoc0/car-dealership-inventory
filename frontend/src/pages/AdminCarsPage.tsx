@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useApi } from '../api/ApiContext';
 import type { Car } from '../api/types';
 import CarFiltersForm from '../cars/CarFiltersForm';
@@ -34,9 +34,16 @@ function CarRow({ car }: { car: Car }) {
   );
 }
 
+/** Pages like the add/edit form leave a confirmation message in the navigation state. */
+function noticeFromLocation(state: unknown): string | null {
+  const notice = (state as { notice?: unknown } | null)?.notice;
+  return typeof notice === 'string' ? notice : null;
+}
+
 export default function AdminCarsPage() {
   const api = useApi();
   const { state, reload, applyFilters, previousPage, nextPage } = useCarBrowser(api);
+  const notice = noticeFromLocation(useLocation().state);
 
   return (
     <section className="space-y-6">
@@ -46,6 +53,12 @@ export default function AdminCarsPage() {
           Add vehicle
         </Link>
       </div>
+
+      {notice && (
+        <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
+          {notice}
+        </p>
+      )}
 
       <CarFiltersForm onSearch={applyFilters} />
 

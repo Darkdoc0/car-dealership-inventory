@@ -5,6 +5,7 @@ import type { Session } from './auth/session';
 import AppLayout from './components/AppLayout';
 import { GuestOnly, RequireAdmin, RequireAuth } from './components/routeGuards';
 import AdminCarsPage from './pages/AdminCarsPage';
+import CarFormPage from './pages/CarFormPage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -25,6 +26,8 @@ export default function App({ session }: { session: Session }) {
               <Route path="/" element={<DashboardPage />} />
               <Route element={<RequireAdmin />}>
                 <Route path="/admin" element={<AdminCarsPage />} />
+                <Route path="/admin/cars/new" element={<CarFormPage />} />
+                <Route path="/admin/cars/:id/edit" element={<CarFormPage />} />
               </Route>
             </Route>
           </Route>
