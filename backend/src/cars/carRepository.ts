@@ -48,6 +48,20 @@ const UPDATE_COLUMNS: Record<keyof CarUpdate, string> = {
   status: 'status',
 };
 
+type FilterKey = Exclude<keyof CarListQuery, 'limit' | 'offset'>;
+
+/** One SQL condition per optional list filter; `?` is replaced by the bound parameter. Add a filter by adding a row. */
+const LIST_FILTERS: Record<FilterKey, string> = {
+  make: 'lower(make) = lower(?)',
+  model: 'lower(model) = lower(?)',
+  category: 'category = ?',
+  status: 'status = ?',
+  minYear: 'year >= ?',
+  maxYear: 'year <= ?',
+  minPrice: 'price_cents >= ?',
+  maxPrice: 'price_cents <= ?',
+};
+
 export function createCarRepository(pool: Pool): CarRepository {
   /**
    * Runs a guarded stock UPDATE that returns the car when its guard passes. When nothing matched,
@@ -83,18 +97,12 @@ export function createCarRepository(pool: Pool): CarRepository {
     async list(q) {
       const conditions: string[] = [];
       const params: unknown[] = [];
-      const add = (sql: string, value: unknown) => {
+      for (const [key, condition] of Object.entries(LIST_FILTERS) as [FilterKey, string][]) {
+        const value = q[key];
+        if (value === undefined) continue;
         params.push(value);
-        conditions.push(sql.replace('?', `$${params.length}`));
-      };
-      if (q.make) add('lower(make) = lower(?)', q.make);
-      if (q.model) add('lower(model) = lower(?)', q.model);
-      if (q.category) add('category = ?', q.category);
-      if (q.status) add('status = ?', q.status);
-      if (q.minYear !== undefined) add('year >= ?', q.minYear);
-      if (q.maxYear !== undefined) add('year <= ?', q.maxYear);
-      if (q.minPrice !== undefined) add('price_cents >= ?', q.minPrice);
-      if (q.maxPrice !== undefined) add('price_cents <= ?', q.maxPrice);
+        conditions.push(condition.replace('?', `$${params.length}`));
+      }
       const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
       const [items, count] = await Promise.all([
