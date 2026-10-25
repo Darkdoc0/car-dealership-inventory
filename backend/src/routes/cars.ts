@@ -5,8 +5,10 @@ import { requireAuth } from '../middleware/requireAuth';
 import { requireRole } from '../middleware/requireRole';
 
 export const CAR_STATUSES = ['available', 'reserved', 'sold'] as const;
+export const CAR_CATEGORIES = ['sedan', 'suv', 'truck', 'hatchback', 'coupe', 'convertible', 'van'] as const;
+export const MAX_QUANTITY = 1_000_000;
 
-const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents", status,
+const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents", category, quantity, status,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 const nonBlank = z.string().trim().min(1).max(100);
@@ -26,12 +28,17 @@ const carFields = z.object({
     .refine((y) => y <= new Date().getFullYear() + 1),
   mileage: z.number().int().min(0).max(10_000_000),
   priceCents: z.number().int().min(0).max(2_000_000_000),
+  category: z.enum(CAR_CATEGORIES),
+  quantity: z.number().int().min(0).max(MAX_QUANTITY),
   status: z.enum(CAR_STATUSES),
 });
 
-export const carInputSchema = carFields.extend({ status: z.enum(CAR_STATUSES).default('available') });
+export const carInputSchema = carFields.extend({
+  quantity: carFields.shape.quantity.default(1),
+  status: carFields.shape.status.default('available'),
+});
 
-// Built from carFields, not carInputSchema: a default on status would reset it on every partial update.
+// Built from carFields, not carInputSchema: defaults on status/quantity would reset them on every partial update.
 export const carUpdateSchema = carFields
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, { message: 'At least one field is required' });
@@ -43,6 +50,8 @@ const UPDATE_COLUMNS: Record<keyof z.infer<typeof carFields>, string> = {
   year: 'year',
   mileage: 'mileage',
   priceCents: 'price_cents',
+  category: 'category',
+  quantity: 'quantity',
   status: 'status',
 };
 
@@ -59,9 +68,9 @@ carsRouter.post('/', requireRole('admin'), async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO cars (vin, make, model, year, mileage, price_cents, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${CAR_COLUMNS}`,
-      [c.vin, c.make, c.model, c.year, c.mileage, c.priceCents, c.status],
+      `INSERT INTO cars (vin, make, model, year, mileage, price_cents, category, quantity, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${CAR_COLUMNS}`,
+      [c.vin, c.make, c.model, c.year, c.mileage, c.priceCents, c.category, c.quantity, c.status],
     );
     return res.status(201).json(rows[0]);
   } catch (err) {
@@ -107,6 +116,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const listQuerySchema = z.object({
   make: nonBlank.optional(),
   model: nonBlank.optional(),
+  category: z.enum(CAR_CATEGORIES).optional(),
   status: z.enum(CAR_STATUSES).optional(),
   minYear: intParam(0, 3000).optional(),
   maxYear: intParam(0, 3000).optional(),
@@ -131,6 +141,7 @@ carsRouter.get('/', async (req, res, next) => {
   };
   if (q.make) add('lower(make) = lower(?)', q.make);
   if (q.model) add('lower(model) = lower(?)', q.model);
+  if (q.category) add('category = ?', q.category);
   if (q.status) add('status = ?', q.status);
   if (q.minYear !== undefined) add('year >= ?', q.minYear);
   if (q.maxYear !== undefined) add('year <= ?', q.maxYear);
