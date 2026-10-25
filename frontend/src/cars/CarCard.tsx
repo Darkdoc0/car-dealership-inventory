@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { messageFrom } from '../api/errors';
 import type { Car } from '../api/types';
-import { formatMileage, formatPrice } from '../lib/format';
+import { carName, formatMileage, formatPrice } from '../lib/format';
 import { CATEGORY_LABELS } from './labels';
 
 /** Why a car cannot be bought right now, or null when it can. */
@@ -32,10 +32,10 @@ export default function CarCard({ car, onPurchase }: { car: Car; onPurchase: (ca
   return (
     <article aria-labelledby={titleId} className="flex flex-col justify-between rounded-lg bg-white p-4 shadow">
       <div className="space-y-2">
-        <h2 id={titleId} className="text-lg font-semibold text-slate-900">{`${car.year} ${car.make} ${car.model}`}</h2>
+        <h2 id={titleId} className="text-lg font-semibold text-slate-900">{carName(car)}</h2>
         <p className="text-xl font-bold text-indigo-600">{formatPrice(car.priceCents)}</p>
         <ul className="space-y-1 text-sm text-slate-600">
-          <li>{formatMileage(car.mileage)}</li>
+          {car.mileage !== null && <li>{formatMileage(car.mileage)}</li>}
           <li>{CATEGORY_LABELS[car.category]}</li>
           <li>{`${car.quantity} in stock`}</li>
         </ul>

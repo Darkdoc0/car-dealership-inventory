@@ -21,11 +21,13 @@ export interface LoginResult {
 
 export interface Car {
   id: number;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
-  year: number;
-  mileage: number;
+  year: number | null;
+  mileage: number | null;
+  /** Dollars; priceCents is the same amount in whole cents. */
+  price: number;
   priceCents: number;
   category: CarCategory;
   quantity: number;
@@ -36,11 +38,11 @@ export interface Car {
 
 /** Fields an admin supplies when adding a car. */
 export interface CarInput {
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
-  year: number;
-  mileage: number;
+  year: number | null;
+  mileage: number | null;
   priceCents: number;
   category: CarCategory;
   quantity?: number;

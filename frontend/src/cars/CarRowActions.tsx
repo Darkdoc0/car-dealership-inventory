@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { messageFrom } from '../api/errors';
+import { carName } from '../lib/format';
 import type { Car } from '../api/types';
 
 const MAX_RESTOCK = 1_000_000;
@@ -22,7 +23,7 @@ const dangerButton = 'rounded-md bg-red-600 px-3 py-1 font-medium text-white hov
 
 /** The Edit / Restock / Delete controls of one row. Restock and Delete expand in place, so there are no pop-up dialogs. */
 export default function CarRowActions({ car, onRestock, onDelete }: CarRowActionsProps) {
-  const name = `${car.year} ${car.make} ${car.model}`;
+  const name = carName(car);
   const [mode, setMode] = useState<Mode>('idle');
   const [quantity, setQuantity] = useState('');
   const [error, setError] = useState<string | null>(null);

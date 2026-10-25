@@ -82,7 +82,7 @@ describe('parseCarForm', () => {
     expect(errorsFor({ year: 'abc' }).year).toBeDefined();
   });
 
-  it.each([['-1'], ['1.5'], ['abc'], ['10000001'], ['']])('rejects the mileage %p', (mileage) => {
+  it.each([['-1'], ['1.5'], ['abc'], ['10000001']])('rejects the mileage %p', (mileage) => {
     expect(errorsFor({ mileage }).mileage).toBe('Mileage must be a whole number from 0 to 10,000,000');
   });
 

@@ -15,11 +15,10 @@ export const EMPTY_FILTERS: CarFilters = { make: '', model: '', category: '', mi
 
 export const PAGE_SIZE = 12;
 
-/** Dollars typed by the user to whole cents, or undefined when it is not a non-negative amount. */
-function dollarsToCents(text: string): number | undefined {
+/** Dollars typed by the user, or undefined when it is not a non-negative amount with at most two decimals. */
+function parseDollars(text: string): number | undefined {
   const trimmed = text.trim();
-  if (!/^\d+(\.\d+)?$/.test(trimmed)) return undefined;
-  return Math.round(Number(trimmed) * 100);
+  return /^\d+(\.\d{1,2})?$/.test(trimmed) ? Number(trimmed) : undefined;
 }
 
 export function filtersToParams(filters: CarFilters, page: number): CarListParams {
@@ -30,9 +29,9 @@ export function filtersToParams(filters: CarFilters, page: number): CarListParam
   const model = filters.model.trim();
   if (model) params.model = model;
   if (filters.category) params.category = filters.category;
-  const minPrice = dollarsToCents(filters.minPrice);
+  const minPrice = parseDollars(filters.minPrice);
   if (minPrice !== undefined) params.minPrice = minPrice;
-  const maxPrice = dollarsToCents(filters.maxPrice);
+  const maxPrice = parseDollars(filters.maxPrice);
   if (maxPrice !== undefined) params.maxPrice = maxPrice;
 
   return params;

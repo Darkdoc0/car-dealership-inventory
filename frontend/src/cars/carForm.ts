@@ -40,11 +40,11 @@ const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/;
 
 export function carToFormValues(car: Car): CarFormValues {
   return {
-    vin: car.vin,
+    vin: car.vin ?? '',
     make: car.make,
     model: car.model,
-    year: String(car.year),
-    mileage: String(car.mileage),
+    year: car.year === null ? '' : String(car.year),
+    mileage: car.mileage === null ? '' : String(car.mileage),
     price: (car.priceCents / 100).toFixed(2),
     category: car.category,
     quantity: String(car.quantity),
@@ -78,19 +78,21 @@ export function parseCarForm(values: CarFormValues): ParsedCarForm {
   const errors: CarFormErrors = {};
   const maxYear = new Date().getFullYear() + 1;
 
-  const vin = values.vin.trim().toUpperCase();
-  if (!VIN_PATTERN.test(vin)) errors.vin = 'VIN must be 17 letters and digits (no I, O or Q)';
+  // VIN, year and mileage are optional: left blank they are saved as "none".
+  const vinText = values.vin.trim().toUpperCase();
+  const vin = vinText === '' ? null : vinText;
+  if (vin !== null && !VIN_PATTERN.test(vin)) errors.vin = 'VIN must be 17 letters and digits (no I, O or Q)';
 
   const make = requiredText('Make', values.make);
   if ('error' in make) errors.make = make.error;
   const model = requiredText('Model', values.model);
   if ('error' in model) errors.model = model.error;
 
-  const year = wholeNumberIn(values.year, MIN_YEAR, maxYear);
-  if (year === null) errors.year = `Year must be between ${MIN_YEAR} and ${maxYear}`;
+  const year = values.year.trim() === '' ? null : wholeNumberIn(values.year, MIN_YEAR, maxYear);
+  if (year === null && values.year.trim() !== '') errors.year = `Year must be between ${MIN_YEAR} and ${maxYear}`;
 
-  const mileage = wholeNumberIn(values.mileage, 0, MAX_MILEAGE);
-  if (mileage === null) errors.mileage = 'Mileage must be a whole number from 0 to 10,000,000';
+  const mileage = values.mileage.trim() === '' ? null : wholeNumberIn(values.mileage, 0, MAX_MILEAGE);
+  if (mileage === null && values.mileage.trim() !== '') errors.mileage = 'Mileage must be a whole number from 0 to 10,000,000';
 
   const priceCents = dollarsToCents(values.price);
   if (priceCents === null) errors.price = 'Price must be an amount in dollars, like 18500 or 18500.50';
@@ -105,8 +107,6 @@ export function parseCarForm(values: CarFormValues): ParsedCarForm {
     Object.keys(errors).length > 0 ||
     'error' in make ||
     'error' in model ||
-    year === null ||
-    mileage === null ||
     priceCents === null ||
     quantity === null ||
     !values.category
