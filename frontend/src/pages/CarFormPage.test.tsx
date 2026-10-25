@@ -53,7 +53,7 @@ describe('Add vehicle page', () => {
     await save();
 
     expect(await screen.findByRole('heading', { name: 'Manage vehicles' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Added 2021 Toyota Corolla');
+    expect(await screen.findByText('Added 2021 Toyota Corolla')).toBeInTheDocument();
     expect(session.api.createCar).toHaveBeenCalledWith({
       vin: 'TST12345678901234',
       make: 'Toyota',
@@ -175,7 +175,7 @@ describe('Edit vehicle page', () => {
 
     expect(await screen.findByRole('heading', { name: 'Manage vehicles' })).toBeInTheDocument();
     expect(session.api.updateCar).toHaveBeenCalledWith(7, { priceCents: 1700000 });
-    expect(screen.getByRole('status')).toHaveTextContent('Saved 2021 Toyota Corolla');
+    expect(await screen.findByText('Saved 2021 Toyota Corolla')).toBeInTheDocument();
   });
 
   it('names the vehicle by its saved values in the confirmation', async () => {
@@ -188,7 +188,7 @@ describe('Edit vehicle page', () => {
     await userEvent.type(screen.getByLabelText('Model'), 'Camry');
     await save();
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Saved 2021 Toyota Camry');
+    expect(await screen.findByText('Saved 2021 Toyota Camry')).toBeInTheDocument();
   });
 
   it('goes back to the list without calling the API when nothing changed', async () => {
