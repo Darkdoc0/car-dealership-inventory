@@ -60,6 +60,17 @@ describe('POST /api/auth/register', () => {
     expect(res.status).toBe(400);
   });
 
+  it('stores and returns the email lower-cased', async () => {
+    const email = uniqueEmail();
+
+    const res = await request(app).post('/api/auth/register').send({ email: email.toUpperCase(), password: 'Sup3rSecret!' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.email).toBe(email.toLowerCase());
+    const { rows } = await pool.query('SELECT email FROM users WHERE id = $1', [res.body.id]);
+    expect(rows[0].email).toBe(email.toLowerCase());
+  });
+
   it('rejects a missing body with 400', async () => {
     const res = await request(app).post('/api/auth/register').send({});
 
