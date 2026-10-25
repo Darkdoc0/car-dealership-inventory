@@ -157,7 +157,7 @@ frontend/   React app
   src/cars/          search hook, filters, list/card/form components
   src/pages/         one component per screen
 e2e/        Playwright tests; starts its own backend (:3101) and frontend (:5174)
-docs/       TEST_REPORT.md
+docs/       TEST_REPORT.md and TDD_EVIDENCE.md
 PROMPTS.md  raw AI chat log (see "My AI Usage")
 ```
 
@@ -199,10 +199,10 @@ This project was built with **Claude** (Anthropic): the kata brief was written i
 **How the work was run**
 
 - **Phased plan, one approval at a time.** The brief set four phases (setup, backend, frontend, deliverables). I answered "yes, do X next" at each step, and Claude did not push, open pull requests or change the PR description without that go-ahead.
-- **Strict red-green-refactor.** For each behavior Claude wrote a failing test, watched it fail for the right reason, committed it on its own, then wrote the minimum code to pass. About 40 of this branch's roughly 100 commits are `test:` commits (`git log --format=%s | grep -c '^test'`), and the history shows each failing-test commit directly before its implementation commit. Refactors are separate `refactor:` commits with no behavior change and unchanged tests.
+- **Strict red-green-refactor.** For each behavior Claude wrote a failing test, watched it fail for the right reason, committed it on its own, then wrote the minimum code to pass. 42 of the 110 commits behind the two pull requests are `test:` commits, and each failing-test commit sits directly before its implementation commit. Refactors are separate `refactor:` commits with no behavior change and unchanged tests. Because both pull requests were squash-merged, `main` shows only three commits; [`docs/TDD_EVIDENCE.md`](docs/TDD_EVIDENCE.md) lists every test commit next to the commit that implements it (with links) and shows how to replay a pair yourself.
 - **A code review before every implementation commit.** Claude ran a code-review pass on each change and reported its findings. Many were fixed immediately, test-first: for example login accepted passwords longer than 72 bytes (bcrypt ignores the rest, so a longer string matched), a transient `/me` failure wiped a valid session, paging unmounted the Next button and dropped keyboard focus, and the edit form kept the previous vehicle when the id in the address changed. Findings not fixed were recorded in the PR description.
 - **A whole-codebase review.** After the backend was done, a SOLID and clean-code review of all of `backend/` led to seven separate refactor commits (user repository, injectable app, password hasher, one error helper, typed domain values, declarative filters, testable startup with graceful shutdown). A final audit before submission added security headers (helmet) and a minimum production JWT secret length.
-- **Every commit carries the co-author trailer**, added by a git hook: `Co-authored-by: Claude <AI@users.noreply.github.com>`.
+- **Every commit carries the co-author trailer**, added by a git hook: `Co-authored-by: Claude <AI@users.noreply.github.com>`. The hook lives in `.githooks/` and git only uses it once you run `git config core.hooksPath .githooks` in a clone (set `NO_AI=1` for a commit written entirely by hand). The prompt logger is configured in `.claude/settings.json` and runs automatically inside Claude Code.
 
 **How the output was verified rather than trusted**
 
