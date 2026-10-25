@@ -8,10 +8,9 @@ import CarResults from '../cars/CarResults';
 import CarRowActions from '../cars/CarRowActions';
 import { CATEGORY_LABELS, STATUS_LABELS } from '../cars/labels';
 import { useCarBrowser } from '../cars/useCarBrowser';
-import { formatPrice } from '../lib/format';
+import { carName, formatPrice } from '../lib/format';
 
 const cell = 'px-4 py-3 align-top';
-const carName = (car: Car) => `${car.year} ${car.make} ${car.model}`;
 
 interface CarRowProps {
   car: Car;
@@ -25,7 +24,7 @@ function CarRow({ car, onRestock, onDelete }: CarRowProps) {
       <th scope="row" className={`${cell} text-left font-medium text-slate-900`}>
         {carName(car)}
       </th>
-      <td className={`${cell} font-mono text-xs text-slate-600`}>{car.vin}</td>
+      <td className={`${cell} font-mono text-xs text-slate-600`}>{car.vin ?? '—'}</td>
       <td className={cell}>{CATEGORY_LABELS[car.category]}</td>
       <td className={cell}>{formatPrice(car.priceCents)}</td>
       <td className={cell}>{car.quantity}</td>

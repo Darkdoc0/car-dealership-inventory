@@ -87,17 +87,17 @@ describe('Add vehicle page', () => {
     expect(session.api.createCar).toHaveBeenCalledWith(expect.objectContaining({ quantity: 4 }));
   });
 
-  it('shows every problem next to its field and does not call the API', async () => {
+  it('shows every required-field problem next to its field and does not call the API', async () => {
     const session = renderAt('/admin/cars/new');
     await screen.findByRole('heading', { name: 'Add vehicle' });
 
     await save();
 
-    expect(await screen.findByText('VIN must be 17 letters and digits (no I, O or Q)')).toBeInTheDocument();
     expect(screen.getByText('Make is required')).toBeInTheDocument();
     expect(screen.getByText('Model is required')).toBeInTheDocument();
     expect(screen.getByText('Choose a category')).toBeInTheDocument();
-    expect(screen.getByLabelText('VIN')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Make')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('VIN')).not.toHaveAttribute('aria-invalid', 'true');
     expect(session.api.createCar).not.toHaveBeenCalled();
   });
 
@@ -122,7 +122,7 @@ describe('Add vehicle page', () => {
 
     await save();
 
-    await waitFor(() => expect(screen.getByLabelText('VIN')).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText('Make')).toHaveFocus());
   });
 
   it('shows the server message and stays on the form when the VIN already exists', async () => {

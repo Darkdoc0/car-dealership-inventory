@@ -19,21 +19,17 @@ describe('filtersToParams', () => {
     expect(filtersToParams({ ...EMPTY_FILTERS, category: 'suv' }, 0)).toMatchObject({ category: 'suv' });
   });
 
-  it('converts dollar prices to cents', () => {
+  it('sends prices in dollars, as the API expects', () => {
     const params = filtersToParams({ ...EMPTY_FILTERS, minPrice: '10000', maxPrice: '20000.50' }, 0);
 
-    expect(params).toMatchObject({ minPrice: 1000000, maxPrice: 2000050 });
+    expect(params).toMatchObject({ minPrice: 10000, maxPrice: 20000.5 });
   });
 
   it('keeps a price of zero', () => {
     expect(filtersToParams({ ...EMPTY_FILTERS, minPrice: '0' }, 0)).toMatchObject({ minPrice: 0 });
   });
 
-  it('rounds fractional cents instead of producing a float', () => {
-    expect(filtersToParams({ ...EMPTY_FILTERS, minPrice: '19.999' }, 0)).toMatchObject({ minPrice: 2000 });
-  });
-
-  it.each([['abc'], ['-5'], ['']])('ignores the unusable price %p', (value) => {
+  it.each([['abc'], ['-5'], [''], ['19.999']])('ignores the unusable price %p', (value) => {
     const params = filtersToParams({ ...EMPTY_FILTERS, minPrice: value }, 0);
 
     expect(params).not.toHaveProperty('minPrice');

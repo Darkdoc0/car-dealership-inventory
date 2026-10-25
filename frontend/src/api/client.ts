@@ -24,7 +24,7 @@ export interface ApiClientOptions {
 const NETWORK_ERROR_MESSAGE = 'Cannot reach the server. Check your connection and try again.';
 const UNEXPECTED_RESPONSE_MESSAGE = 'The server sent an unexpected response.';
 
-type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 /** The server's `{ error }` message, or a generic one when the body is not the expected JSON. */
 async function errorMessage(res: Response): Promise<string> {
@@ -76,12 +76,12 @@ export function createApiClient({ fetch: fetchFn, getToken, onUnauthorized }: Ap
     register: (email, password) => request('POST', '/api/auth/register', { email, password }),
     login: (email, password) => request('POST', '/api/auth/login', { email, password }),
     me: () => request('GET', '/api/auth/me'),
-    listCars: (params = {}) => request('GET', `/api/cars${queryString(params)}`),
-    getCar: (id) => request('GET', `/api/cars/${id}`),
-    createCar: (input) => request('POST', '/api/cars', input),
-    updateCar: (id, patch) => request('PATCH', `/api/cars/${id}`, patch),
-    deleteCar: (id) => request('DELETE', `/api/cars/${id}`),
-    purchaseCar: (id, quantity) => request('POST', `/api/cars/${id}/purchase`, quantity === undefined ? {} : { quantity }),
-    restockCar: (id, quantity) => request('POST', `/api/cars/${id}/restock`, { quantity }),
+    listCars: (params = {}) => request('GET', `/api/vehicles${queryString(params)}`),
+    getCar: (id) => request('GET', `/api/vehicles/${id}`),
+    createCar: (input) => request('POST', '/api/vehicles', input),
+    updateCar: (id, patch) => request('PUT', `/api/vehicles/${id}`, patch),
+    deleteCar: (id) => request('DELETE', `/api/vehicles/${id}`),
+    purchaseCar: (id, quantity) => request('POST', `/api/vehicles/${id}/purchase`, quantity === undefined ? {} : { quantity }),
+    restockCar: (id, quantity) => request('POST', `/api/vehicles/${id}/restock`, { quantity }),
   };
 }

@@ -57,6 +57,20 @@ describe('DashboardPage listing', () => {
     expect(vehicle.getByText('3 in stock')).toBeInTheDocument();
   });
 
+  it('shows a vehicle that has no year or mileage without blanks or "null"', async () => {
+    const session = createFakeSession({ token: 't', user: member });
+    session.api.listCars.mockResolvedValue(
+      makePage([makeCar({ id: 5, make: 'Mazda', model: '3', year: null, mileage: null, vin: null })]),
+    );
+
+    renderDashboard(session);
+
+    const vehicle = within(await card('Mazda 3'));
+    expect(vehicle.queryByText(/mi$/)).not.toBeInTheDocument();
+    expect(vehicle.getByText('Sedan')).toBeInTheDocument();
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument();
+  });
+
   it('explains when nothing matches', async () => {
     const session = createFakeSession({ token: 't', user: member });
     session.api.listCars.mockResolvedValue(makePage([]));
@@ -99,8 +113,8 @@ describe('DashboardPage search', () => {
         make: 'Toyota',
         model: 'Corolla',
         category: 'suv',
-        minPrice: 1000000,
-        maxPrice: 2000000,
+        minPrice: 10000,
+        maxPrice: 20000,
         limit: 12,
         offset: 0,
       }),

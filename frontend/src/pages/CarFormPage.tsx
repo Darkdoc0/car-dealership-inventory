@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApi } from '../api/ApiContext';
 import { ApiError, messageFrom } from '../api/errors';
 import type { Car, CarInput } from '../api/types';
+import { carName } from '../lib/format';
 import VehicleForm from '../cars/VehicleForm';
 import { EMPTY_CAR_FORM, carToFormValues, changedFields } from '../cars/carForm';
 
-const carName = (car: Car) => `${car.year} ${car.make} ${car.model}`;
 
 function BackLink() {
   return (

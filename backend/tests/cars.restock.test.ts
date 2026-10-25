@@ -14,19 +14,19 @@ beforeAll(async () => {
 afterAll(() => pool.end());
 
 const createCar = async (overrides = {}) =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload(overrides))).body;
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload(overrides))).body;
 const restock = (id: number | string, body?: object, token = adminToken) => {
-  const req = request(app).post(`/api/cars/${id}/restock`).set(bearer(token));
+  const req = request(app).post(`/api/vehicles/${id}/restock`).set(bearer(token));
   return body ? req.send(body) : req;
 };
-const getCar = async (id: number) => (await request(app).get(`/api/cars/${id}`).set(bearer(userToken))).body;
+const getCar = async (id: number) => (await request(app).get(`/api/vehicles/${id}`).set(bearer(userToken))).body;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe('POST /api/cars/:id/restock', () => {
+describe('POST /api/vehicles/:id/restock', () => {
   it('rejects a request without a token with 401', async () => {
     const car = await createCar();
 
-    const res = await request(app).post(`/api/cars/${car.id}/restock`).send({ quantity: 1 });
+    const res = await request(app).post(`/api/vehicles/${car.id}/restock`).send({ quantity: 1 });
 
     expect(res.status).toBe(401);
   });
@@ -53,13 +53,13 @@ describe('POST /api/cars/:id/restock', () => {
 
   it('makes a sold-out car available again', async () => {
     const car = await createCar({ quantity: 1 });
-    await request(app).post(`/api/cars/${car.id}/purchase`).set(bearer(userToken));
+    await request(app).post(`/api/vehicles/${car.id}/purchase`).set(bearer(userToken));
     expect(await getCar(car.id)).toMatchObject({ quantity: 0, status: 'sold' });
 
     const res = await restock(car.id, { quantity: 2 });
 
     expect(res.body).toMatchObject({ quantity: 2, status: 'available' });
-    const bought = await request(app).post(`/api/cars/${car.id}/purchase`).set(bearer(userToken));
+    const bought = await request(app).post(`/api/vehicles/${car.id}/purchase`).set(bearer(userToken));
     expect(bought.status).toBe(200);
   });
 

@@ -1,13 +1,13 @@
 # Test report
 
 Generated 2026-10-25 from a fresh run of all three suites on `feat/backend-auth-register`.
-All three pass: **465 tests, 0 failures, 0 skipped**.
+All three pass: **527 tests, 0 failures, 0 skipped**.
 
 | Suite | Tool | Tests | Result | Coverage (statements / branches / functions / lines) |
 |-------|------|-------|--------|------------------------------------------------------|
-| Backend (API, database, middleware) | Jest + Supertest, real PostgreSQL | 248 in 28 files | all passed (21 s) | 100% / 100% / 100% / 100% |
-| Frontend (components, state, API client) | Vitest + Testing Library | 195 in 17 files | all passed (13 s) | 99.6% / 97.2% / 100% / 100% |
-| End to end (real browser) | Playwright driving Chrome | 22 in 3 files | all passed (45 s) | not measured (see below) |
+| Backend (API, database, middleware) | Jest + Supertest, real PostgreSQL | 303 in 31 files | all passed (21 s) | 100% / 100% / 100% / 100% |
+| Frontend (components, state, API client) | Vitest + Testing Library | 201 in 17 files | all passed (13 s) | 99.6% / 97.2% / 100% / 100% |
+| End to end (real browser) | Playwright driving Chrome | 23 in 3 files | all passed (45 s) | not measured (see below) |
 
 ## How to run
 
@@ -24,18 +24,18 @@ The end-to-end run resets `car_dealership_test`, seeds one admin user, and uses 
 It drives the Chrome that is installed on the machine; set `E2E_CHANNEL=msedge` to use Edge instead.
 A failing test keeps a screenshot and a trace under `e2e/test-results/`.
 
-## Backend (248 tests, 100% coverage)
+## Backend (303 tests, 100% coverage)
 
 Built red-green-refactor: each feature has a failing-test commit before its implementation commit, and a code review ran before every implementation commit.
-Covered: the demo seed (`npm run seed`: the logins, 15 vehicles in every category with exactly three at zero stock, the full reset, the production guards, and that the README lists the same logins), security headers (helmet), a minimum production JWT secret length, registration and login (hashing, validation, rate limiting, token expiry), the auth middleware (missing, malformed, forged, expired and `alg: none` tokens), roles (admin-only routes answer 403), the cars API (create, get, list with filters and paging, update, delete), atomic purchase and restock (a 10-way concurrency test proves stock never oversells), migrations (tracking, rollback, locking), error handling, startup and shutdown.
+Covered: the demo seed (`npm run seed`: the logins, 15 vehicles in every category with exactly three at zero stock, the full reset, the production guards, and that the README lists the same logins), security headers (helmet), a minimum production JWT secret length, registration and login (hashing, validation, rate limiting, token expiry), the auth middleware (missing, malformed, forged, expired and `alg: none` tokens), roles (admin-only routes answer 403), the vehicles API (create, get, list and search with filters and paging, PUT/PATCH update, delete, price in dollars, optional VIN/year/mileage, the `/api/cars` alias), atomic purchase and restock (a 10-way concurrency test proves stock never oversells), migrations (tracking, rollback, locking), error handling, startup and shutdown.
 Coverage is for every file Jest reports; the three-line `server.ts` and `seed.ts` entry files cannot be instrumented, and the logic they call (`bootstrap.ts`) is covered.
 
-## Frontend (195 tests, 99.6% statements)
+## Frontend (201 tests, 99.6% statements)
 
 Covered: the API client (bearer auth, query building, error mapping, session expiry), token storage, auth state, the sign-in and register forms and their password rules, route guards, the vehicle list (search, filters, paging, out-of-order responses, purchase states), the admin list, the add and edit forms (validation, change detection, focus), and restock and delete.
 Below 100%: only branches and a few statements, all of one kind: the `stale` / `cancelled` guards that ignore a response arriving after the component was replaced or unmounted (`useCarSearch`, `AuthContext`, `CarFormPage`), and one fallback in the API client for an error body that is JSON but has no message. Writing this report exposed two untested behaviors (what happens when loading the user fails right after a successful login, and changing a vehicle's status in the edit form); tests were added for them, along with the starting quantity in the add form, `messageFrom`, and `useApi` outside a provider.
 
-## End to end (22 tests)
+## End to end (23 tests)
 
 These run the real backend and the real frontend against a real database in a real browser, so they cover what the unit tests with fakes cannot: the proxy, the database, and the pieces working together.
 
@@ -43,6 +43,7 @@ These run the real backend and the real frontend against a real database in a re
 |---|------|----------|--------|------|
 | 1 | admin | an admin sees the management link; a regular user does not and is turned away from /admin | passed | 2.4s |
 | 2 | admin | an admin adds a vehicle, it appears in the admin list, and shoppers can then find it | passed | 1.6s |
+| 2a | admin | a vehicle can be added with only make, model, category and price | passed | 1.3s |
 | 3 | admin | the add form lists every problem at once and puts the cursor in the first bad field | passed | 1.3s |
 | 4 | admin | reusing a VIN is refused by the server and the form stays open | passed | 1.6s |
 | 5 | admin | editing a vehicle changes its price everywhere | passed | 1.6s |

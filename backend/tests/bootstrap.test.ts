@@ -10,13 +10,13 @@ describe('startServer', () => {
 
     try {
       expect(server.port).toBeGreaterThan(0);
-      const res = await fetch(`http://127.0.0.1:${server.port}/api/cars`);
+      const res = await fetch(`http://127.0.0.1:${server.port}/api/vehicles`);
       expect(res.status).toBe(401); // the real app is serving, and it requires a login
     } finally {
       await server.close();
     }
 
-    await expect(fetch(`http://127.0.0.1:${server.port}/api/cars`)).rejects.toThrow();
+    await expect(fetch(`http://127.0.0.1:${server.port}/api/vehicles`)).rejects.toThrow();
   });
 
   it('rejects when closed twice instead of silently succeeding', async () => {

@@ -67,12 +67,12 @@ export default function VehicleForm({ initial, mode, onSubmit }: VehicleFormProp
           {serverError}
         </p>
       )}
-      <Field label="VIN" autoCapitalize="characters" maxLength={17} {...text('vin')} />
+      <Field label="VIN" placeholder="Optional" autoCapitalize="characters" maxLength={17} {...text('vin')} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Make" {...text('make')} />
         <Field label="Model" {...text('model')} />
-        <Field label="Year" inputMode="numeric" {...text('year')} />
-        <Field label="Mileage" inputMode="numeric" {...text('mileage')} />
+        <Field label="Year" placeholder="Optional" inputMode="numeric" {...text('year')} />
+        <Field label="Mileage" placeholder="Optional" inputMode="numeric" {...text('mileage')} />
         <Field label="Price ($)" inputMode="decimal" {...text('price')} />
         <SelectField
           label="Category"

@@ -4,11 +4,13 @@ import { MAX_QUANTITY, type CarCategory, type CarInput, type CarListQuery, type 
 
 export interface Car {
   id: number;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
-  year: number;
-  mileage: number;
+  year: number | null;
+  mileage: number | null;
+  /** Dollars, derived from priceCents. */
+  price: number;
   priceCents: number;
   category: CarCategory;
   quantity: number;
@@ -33,7 +35,8 @@ export interface CarRepository {
   restock(id: number, quantity: number): Promise<StockResult>;
 }
 
-const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents", category, quantity, status,
+const CAR_COLUMNS = `id, vin, make, model, year, mileage, price_cents AS "priceCents",
+  (price_cents / 100.0)::float8 AS price, category, quantity, status,
   created_at AS "createdAt", updated_at AS "updatedAt"`;
 
 const UPDATE_COLUMNS: Record<keyof CarUpdate, string> = {
@@ -80,7 +83,7 @@ export function createCarRepository(pool: Pool): CarRepository {
         const { rows } = await pool.query(
           `INSERT INTO cars (vin, make, model, year, mileage, price_cents, category, quantity, status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${CAR_COLUMNS}`,
-          [c.vin, c.make, c.model, c.year, c.mileage, c.priceCents, c.category, c.quantity, c.status],
+          [c.vin ?? null, c.make, c.model, c.year ?? null, c.mileage ?? null, c.priceCents, c.category, c.quantity, c.status],
         );
         return { kind: 'ok', car: rows[0] };
       } catch (err) {

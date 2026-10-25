@@ -14,16 +14,16 @@ beforeAll(async () => {
 afterAll(() => pool.end());
 
 const createCar = async (overrides = {}) =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload(overrides))).body;
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload(overrides))).body;
 const patch = (id: number | string, body: object, token = adminToken) =>
-  request(app).patch(`/api/cars/${id}`).set(bearer(token)).send(body);
+  request(app).patch(`/api/vehicles/${id}`).set(bearer(token)).send(body);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe('PATCH /api/cars/:id', () => {
+describe('PATCH /api/vehicles/:id', () => {
   it('rejects a request without a token with 401', async () => {
     const car = await createCar();
 
-    const res = await request(app).patch(`/api/cars/${car.id}`).send({ priceCents: 1 });
+    const res = await request(app).patch(`/api/vehicles/${car.id}`).send({ priceCents: 1 });
 
     expect(res.status).toBe(401);
   });
@@ -34,7 +34,7 @@ describe('PATCH /api/cars/:id', () => {
     const res = await patch(car.id, { priceCents: 1 }, userToken);
 
     expect(res.status).toBe(403);
-    const after = await request(app).get(`/api/cars/${car.id}`).set(bearer(userToken));
+    const after = await request(app).get(`/api/vehicles/${car.id}`).set(bearer(userToken));
     expect(after.body.priceCents).toBe(car.priceCents);
   });
 
@@ -47,6 +47,7 @@ describe('PATCH /api/cars/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       ...car,
+      price: 17000,
       priceCents: 1700000,
       mileage: 43000,
       updatedAt: expect.any(String),

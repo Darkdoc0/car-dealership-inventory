@@ -17,13 +17,13 @@ afterAll(() => pool.end());
 // The database is shared across test files, so every test scopes itself with a unique make.
 const uniqueMake = () => `Make${Date.now()}x${n++}`;
 const createCar = async (overrides: Record<string, unknown>) =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload(overrides))).body;
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload(overrides))).body;
 const list = (query: Record<string, string | number> = {}, token = userToken) =>
-  request(app).get('/api/cars').query(query).set(bearer(token));
+  request(app).get('/api/vehicles').query(query).set(bearer(token));
 
-describe('GET /api/cars', () => {
+describe('GET /api/vehicles', () => {
   it('rejects a request without a token with 401', async () => {
-    const res = await request(app).get('/api/cars');
+    const res = await request(app).get('/api/vehicles');
 
     expect(res.status).toBe(401);
   });
@@ -77,7 +77,7 @@ describe('GET /api/cars', () => {
     const middle = await createCar({ make, year: 2015, priceCents: 1000000 });
     await createCar({ make, year: 2020, priceCents: 2000000 });
 
-    const res = await list({ make, minYear: 2011, maxYear: 2019, minPrice: 1000000, maxPrice: 1000000 });
+    const res = await list({ make, minYear: 2011, maxYear: 2019, minPrice: 10000, maxPrice: 10000 });
 
     expect(res.body.items).toEqual([middle]);
     expect(res.body.total).toBe(1);
@@ -112,7 +112,7 @@ describe('GET /api/cars', () => {
     ['an unknown status', { status: 'stolen' }],
     ['an unknown category', { category: 'spaceship' }],
     ['a non-numeric minYear', { minYear: 'abc' }],
-    ['a fractional maxPrice', { maxPrice: 10.5 }],
+    ['a maxPrice with fractions of a cent', { maxPrice: 10.005 }],
   ])('rejects %s with 400', async (_label, query) => {
     const res = await list(query);
 

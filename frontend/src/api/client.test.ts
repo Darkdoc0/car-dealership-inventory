@@ -9,6 +9,7 @@ const car: Car = {
   model: 'Corolla',
   year: 2021,
   mileage: 42000,
+  price: 18500,
   priceCents: 1850000,
   category: 'sedan',
   quantity: 3,
@@ -105,7 +106,7 @@ describe('api client requests', () => {
     });
 
     const url = new URL(lastCall().url, 'http://localhost');
-    expect(url.pathname).toBe('/api/cars');
+    expect(url.pathname).toBe('/api/vehicles');
     expect(Object.fromEntries(url.searchParams)).toEqual({
       make: 'Land Rover',
       category: 'suv',
@@ -115,13 +116,13 @@ describe('api client requests', () => {
     });
   });
 
-  it('requests /api/cars with no query string when no params are given', async () => {
+  it('requests /api/vehicles with no query string when no params are given', async () => {
     const { client, fetchMock, lastCall } = setup('t');
     fetchMock.mockResolvedValue(json({ items: [], total: 0, limit: 20, offset: 0 }));
 
     await client.listCars({});
 
-    expect(lastCall().url).toBe('/api/cars');
+    expect(lastCall().url).toBe('/api/vehicles');
   });
 
   it('gets, creates and updates cars with the right verbs and bodies', async () => {
@@ -129,14 +130,14 @@ describe('api client requests', () => {
     fetchMock.mockImplementation(async () => json(car));
 
     await client.getCar(1);
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1', 'GET']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles/1', 'GET']);
 
     await client.createCar(newCar);
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars', 'POST']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles', 'POST']);
     expect(lastCall().body).toMatchObject({ vin: car.vin, category: 'sedan' });
 
     await client.updateCar(1, { priceCents: 99 });
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1', 'PATCH']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles/1', 'PUT']);
     expect(lastCall().body).toEqual({ priceCents: 99 });
   });
 
@@ -145,7 +146,7 @@ describe('api client requests', () => {
     fetchMock.mockImplementation(async () => json(car));
 
     await client.purchaseCar(1);
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1/purchase', 'POST']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles/1/purchase', 'POST']);
     expect(lastCall().body).toEqual({});
 
     await client.purchaseCar(1, 2);
@@ -158,7 +159,7 @@ describe('api client requests', () => {
 
     await client.restockCar(1, 10);
 
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1/restock', 'POST']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles/1/restock', 'POST']);
     expect(lastCall().body).toEqual({ quantity: 10 });
   });
 
@@ -167,7 +168,7 @@ describe('api client requests', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(client.deleteCar(1)).resolves.toBeUndefined();
-    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/cars/1', 'DELETE']);
+    expect([lastCall().url, lastCall().init.method]).toEqual(['/api/vehicles/1', 'DELETE']);
   });
 });
 

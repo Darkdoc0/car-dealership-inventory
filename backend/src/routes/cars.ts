@@ -14,7 +14,10 @@ import { requireRole } from '../middleware/requireRole';
 const NOT_FOUND = 'Car not found';
 const DUPLICATE_VIN = 'A car with this VIN already exists';
 
-/** HTTP layer for /api/cars: parses and validates input, delegates to the repository, maps results to status codes. */
+/**
+ * HTTP layer for /api/vehicles (also mounted at /api/cars): parses and validates input, delegates to the repository,
+ * maps results to status codes.
+ */
 export function createCarsRouter(cars: CarRepository, requireAuth: RequestHandler) {
   const router = Router();
   router.use(requireAuth);
@@ -28,13 +31,16 @@ export function createCarsRouter(cars: CarRepository, requireAuth: RequestHandle
     return res.status(201).json(result.car);
   });
 
-  router.get('/', async (req, res) => {
+  // Listing and searching are the same operation: both filter by make, model, category, status, year and price.
+  const list: RequestHandler = async (req, res) => {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) return sendError(res, 400, describeIssues('Invalid query', parsed.error));
 
     const { items, total } = await cars.list(parsed.data);
     return res.status(200).json({ items, total, limit: parsed.data.limit, offset: parsed.data.offset });
-  });
+  };
+  router.get('/', list);
+  router.get('/search', list); // must come before '/:id', or 'search' would be read as an id
 
   router.get('/:id', async (req, res) => {
     const id = parseId(String(req.params.id));
@@ -42,7 +48,8 @@ export function createCarsRouter(cars: CarRepository, requireAuth: RequestHandle
     return car ? res.status(200).json(car) : sendError(res, 404, NOT_FOUND);
   });
 
-  router.patch('/:id', requireRole('admin'), async (req, res) => {
+  // PUT (the brief's verb) and PATCH do the same thing: change any subset of the vehicle's fields.
+  const update: RequestHandler = async (req, res) => {
     const id = parseId(String(req.params.id));
     if (id === null) return sendError(res, 404, NOT_FOUND);
     const parsed = carUpdateSchema.safeParse(req.body);
@@ -52,7 +59,9 @@ export function createCarsRouter(cars: CarRepository, requireAuth: RequestHandle
     if (result.kind === 'not_found') return sendError(res, 404, NOT_FOUND);
     if (result.kind === 'duplicate_vin') return sendError(res, 409, DUPLICATE_VIN);
     return res.status(200).json(result.car);
-  });
+  };
+  router.put('/:id', requireRole('admin'), update);
+  router.patch('/:id', requireRole('admin'), update);
 
   router.delete('/:id', requireRole('admin'), async (req, res) => {
     const id = parseId(String(req.params.id));

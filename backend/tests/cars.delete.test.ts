@@ -14,14 +14,14 @@ beforeAll(async () => {
 afterAll(() => pool.end());
 
 const createCar = async () =>
-  (await request(app).post('/api/cars').set(bearer(adminToken)).send(carPayload())).body;
-const remove = (id: number | string, token = adminToken) => request(app).delete(`/api/cars/${id}`).set(bearer(token));
+  (await request(app).post('/api/vehicles').set(bearer(adminToken)).send(carPayload())).body;
+const remove = (id: number | string, token = adminToken) => request(app).delete(`/api/vehicles/${id}`).set(bearer(token));
 
-describe('DELETE /api/cars/:id', () => {
+describe('DELETE /api/vehicles/:id', () => {
   it('rejects a request without a token with 401', async () => {
     const car = await createCar();
 
-    const res = await request(app).delete(`/api/cars/${car.id}`);
+    const res = await request(app).delete(`/api/vehicles/${car.id}`);
 
     expect(res.status).toBe(401);
   });
@@ -32,7 +32,7 @@ describe('DELETE /api/cars/:id', () => {
     const res = await remove(car.id, userToken);
 
     expect(res.status).toBe(403);
-    expect((await request(app).get(`/api/cars/${car.id}`).set(bearer(userToken))).status).toBe(200);
+    expect((await request(app).get(`/api/vehicles/${car.id}`).set(bearer(userToken))).status).toBe(200);
   });
 
   it('deletes the car as admin with 204 and an empty body', async () => {
@@ -42,7 +42,7 @@ describe('DELETE /api/cars/:id', () => {
 
     expect(res.status).toBe(204);
     expect(res.text).toBe('');
-    expect((await request(app).get(`/api/cars/${car.id}`).set(bearer(userToken))).status).toBe(404);
+    expect((await request(app).get(`/api/vehicles/${car.id}`).set(bearer(userToken))).status).toBe(404);
   });
 
   it('returns 404 when deleting the same car twice', async () => {
@@ -59,7 +59,7 @@ describe('DELETE /api/cars/:id', () => {
     const car = await createCar();
     await remove(car.id);
 
-    const res = await request(app).post('/api/cars').set(bearer(adminToken)).send({ ...carPayload(), vin: car.vin });
+    const res = await request(app).post('/api/vehicles').set(bearer(adminToken)).send({ ...carPayload(), vin: car.vin });
 
     expect(res.status).toBe(201);
   });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApi } from '../api/ApiContext';
+import { carName } from '../lib/format';
 import type { Car } from '../api/types';
 import CarCard from '../cars/CarCard';
 import CarFiltersForm from '../cars/CarFiltersForm';
@@ -20,7 +21,7 @@ export default function DashboardPage() {
   async function handlePurchase(car: Car) {
     const updated = await api.purchaseCar(car.id);
     replaceCar(updated);
-    setNotice(`Purchased ${car.year} ${car.make} ${car.model}`);
+    setNotice(`Purchased ${carName(car)}`);
   }
 
   return (

@@ -72,7 +72,7 @@ describe('createApp with injected dependencies (no database)', () => {
     const cars = fakeCars();
     const app = createApp({ dependencies: { users: fakeUsers(), cars } });
 
-    const res = await request(app).get('/api/cars?make=Toyota&limit=5').set(bearer(signToken(member.id)));
+    const res = await request(app).get('/api/vehicles?make=Toyota&limit=5').set(bearer(signToken(member.id)));
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ items: [], total: 0, limit: 5, offset: 0 });
@@ -86,7 +86,7 @@ describe('createApp with injected dependencies (no database)', () => {
     cars.list.mockRejectedValue(new Error('boom'));
     const app = createApp({ dependencies: { users: fakeUsers(), cars } });
 
-    const res = await request(app).get('/api/cars').set(bearer(signToken(member.id)));
+    const res = await request(app).get('/api/vehicles').set(bearer(signToken(member.id)));
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'Internal server error' });

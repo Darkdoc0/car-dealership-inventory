@@ -118,10 +118,10 @@ describe('seedDemoData', () => {
     expect(res.status).toBe(200);
     const auth = { Authorization: `Bearer ${res.body.token}` };
 
-    const list = await request(createApp()).get('/api/cars?limit=100').set(auth);
+    const list = await request(createApp()).get('/api/vehicles?limit=100').set(auth);
     expect(list.body.total).toBe(15);
     const available = list.body.items.find((c: { status: string; quantity: number }) => c.status === 'available' && c.quantity > 0);
-    expect((await request(createApp()).post(`/api/cars/${available.id}/purchase`).set(auth)).status).toBe(200);
+    expect((await request(createApp()).post(`/api/vehicles/${available.id}/purchase`).set(auth)).status).toBe(200);
     expect((await request(createApp()).get('/api/admin/users').set(auth)).status).toBe(403);
   });
 

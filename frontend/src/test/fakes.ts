@@ -69,6 +69,7 @@ export function makeCar(overrides: Partial<Car> = {}): Car {
     model: 'Corolla',
     year: 2021,
     mileage: 42000,
+    price: 18500,
     priceCents: 1850000,
     category: 'sedan',
     quantity: 3,

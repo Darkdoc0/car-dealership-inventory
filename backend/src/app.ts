@@ -37,7 +37,9 @@ export function createApp(options: AppOptions = {}) {
   app.post('/api/auth/login', loginRateLimit(options.loginMaxAttempts));
   app.use('/api/auth', createAuthRouter(users, hasher, requireAuth));
   app.use('/api/admin', createAdminRouter(users, requireAuth));
-  app.use('/api/cars', createCarsRouter(cars, requireAuth));
+  const vehicles = createCarsRouter(cars, requireAuth);
+  app.use('/api/vehicles', vehicles);
+  app.use('/api/cars', vehicles); // the original name, kept so existing callers keep working
   app.use(errorHandler);
   return app;
 }

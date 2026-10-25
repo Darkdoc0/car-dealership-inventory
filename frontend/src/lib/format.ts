@@ -9,3 +9,8 @@ export function formatPrice(priceCents: number): string {
 export function formatMileage(mileage: number): string {
   return `${miles.format(mileage)} mi`;
 }
+
+/** "2021 Toyota Corolla"; a vehicle with no year is just "Toyota Corolla". */
+export function carName({ year, make, model }: { year: number | null; make: string; model: string }): string {
+  return [year, make, model].filter((part) => part !== null).join(' ');
+}
