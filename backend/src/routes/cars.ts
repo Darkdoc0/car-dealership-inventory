@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Response } from 'express';
 import { z } from 'zod';
 import { isUniqueViolation, pool } from '../db';
 import { requireAuth } from '../middleware/requireAuth';
@@ -216,22 +216,65 @@ carsRouter.post('/:id/purchase', async (req, res, next) => {
   if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
   const { quantity } = parsed.data;
 
+  return applyStockChange(
+    res,
+    next,
+    id,
+    `UPDATE cars
+        SET quantity = quantity - $1,
+            status = CASE WHEN quantity - $1 = 0 THEN 'sold' ELSE status END,
+            updated_at = now()
+      WHERE id = $2 AND status = 'available' AND quantity >= $1
+      RETURNING ${CAR_COLUMNS}`,
+    [quantity, id],
+    'Not enough stock available',
+  );
+});
+
+const restockSchema = z.object({ quantity: carFields.shape.quantity.min(1) });
+
+carsRouter.post('/:id/restock', requireRole('admin'), async (req, res, next) => {
+  const id = parseId(String(req.params.id));
+  if (id === null) return res.status(404).json(notFound);
+
+  const parsed = restockSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json({ error: 'quantity must be a whole number of at least 1' });
+
+  return applyStockChange(
+    res,
+    next,
+    id,
+    `UPDATE cars
+        SET quantity = quantity + $1,
+            status = CASE WHEN status = 'sold' THEN 'available' ELSE status END,
+            updated_at = now()
+      WHERE id = $2 AND quantity + $1 <= ${MAX_QUANTITY}
+      RETURNING ${CAR_COLUMNS}`,
+    [parsed.data.quantity, id],
+    'Stock limit exceeded',
+  );
+});
+
+/**
+ * Runs a guarded stock UPDATE that returns the car when its guard passes. When nothing matched,
+ * tells a missing car (404) apart from a guard that refused the change (409).
+ */
+async function applyStockChange(
+  res: Response,
+  next: NextFunction,
+  id: number,
+  updateSql: string,
+  params: unknown[],
+  conflictMessage: string,
+) {
   try {
-    const { rows } = await pool.query(
-      `UPDATE cars
-          SET quantity = quantity - $1,
-              status = CASE WHEN quantity - $1 = 0 THEN 'sold' ELSE status END,
-              updated_at = now()
-        WHERE id = $2 AND status = 'available' AND quantity >= $1
-        RETURNING ${CAR_COLUMNS}`,
-      [quantity, id],
-    );
+    const { rows } = await pool.query(updateSql, params);
     if (rows[0]) return res.status(200).json(rows[0]);
 
     const exists = await pool.query('SELECT 1 FROM cars WHERE id = $1', [id]);
     if (!exists.rowCount) return res.status(404).json(notFound);
-    return res.status(409).json({ error: 'Not enough stock available' });
+    return res.status(409).json({ error: conflictMessage });
   } catch (err) {
     return next(err);
   }
-});
+}
